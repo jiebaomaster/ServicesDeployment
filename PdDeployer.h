@@ -1,7 +1,7 @@
 #ifndef __PDDEPLOYER_H__
 #define __PDDEPLOYER_H__
 
-#include "experment.h"
+#include "experiment.h"
 #include <map>
 #include <cmath>
 
@@ -18,7 +18,7 @@ class PdDeployer : public Deployer {
     weight2serviceIndex = tmp;
   }
 
-  void load_update_single(service &s, double running_time) {
+  void load_update_single(service &s, int running_time) {
     // 从权重树中删除原有节点
     for (auto it = weight2serviceIndex.begin(); it != weight2serviceIndex.end();) {
       if (it->first == s.weight && it->second == s.task_type) {
@@ -26,52 +26,77 @@ class PdDeployer : public Deployer {
         break;
       }
     }
-    s.weight += running_time;
+    // todo 权重应该和运行时间和当前加速比有关
+    auto &cur_sd = get_per_node_service_date(s.task_type, s.node_index);
+    auto &cloud_sd = get_per_node_service_date(s.task_type, CLOUD_NODE_INDEX);
+    s.weight += running_time * (double) (cur_sd.processing_time + cur_sd.transmission_time) /
+                (cloud_sd.processing_time + cloud_sd.transmission_time);
     weight2serviceIndex.insert({s.weight, s.task_type});
   }
 
-  bool adjust(int s) { // 云边调整，迁移 s 到 edge, s 为任务编号
-    // 任务 s 消耗的资源
-    source_categories &sc = service_statistics[TO_MAPPED_TASK_TYPE(tasks[s].task_type)].busy_source;
+  bool adjust(int t) { // 云边调整，迁移 t 到 edge, t 为任务编号
+    int service_index = tasks[t].task_type;
     //*** 1. 判断能否直接迁移
-    for (int i = 0; i < EDGE_NODE_NUMS; i++) {
+    for (int i = 0; i < EDGE_NODE_NUMS - 1; i++) {
+      auto &sc = get_source_categories(service_index, i);
       if (checkDeploy(sc, nodes[i])) { // 如果可以直接迁移就不必卸载 edge 上的 service
         doDeploy(sc, nodes[i]);
-        services[tasks[s].task_type].node_index = i;
+        services[service_index].node_index = i;
         return true;
       }
     }
-    //*** 2. 从权重最小的开始遍历直到 s，尝试释放权重更小的服务，直到某个 edge 可以部署 s
+    //*** 2. 从权重最小的开始遍历直到 t，尝试释放权重更小的服务，找到的第一个可以部署 t 的 edge 节点就是迁移权重最小的节点
     std::vector<node> n = nodes;
     int targetNode = -1; // 选中的目标节点
-    for (auto iter = weight2serviceIndex.begin(); iter->second != tasks[s].task_type; iter++) {
+    for (auto iter = weight2serviceIndex.begin(); iter->second != service_index; iter++) {
       // 跳过繁忙的服务和不在 edge 的服务
-      if (!services[iter->second].waiting_tasks.empty() || services[iter->second].node_index == -1)
+      if (!services[iter->second].waiting_tasks.empty() || services[iter->second].node_index == CLOUD_NODE_INDEX)
         continue;
 
       // 尝试取消部署
-      source_categories &sc_cur = service_statistics[TO_MAPPED_TASK_TYPE(iter->second)].busy_source;
+      source_categories &sc_cur = get_source_categories(iter->second, services[iter->second].node_index);
       chancelDeploy(sc_cur, n[services[iter->second].node_index]);
       // 如果可以部署成功了说明找到了目标 edge 节点
-      if (checkDeploy(sc, n[services[iter->second].node_index])) {
+      if (checkDeploy(get_source_categories(service_index, services[iter->second].node_index),
+                      n[services[iter->second].node_index])) {
         targetNode = services[iter->second].node_index;
         break;
       }
     }
     // 没找到可以部署的 edge 节点，迁移失败
     if (targetNode == -1) return false;
-    //*** 3. 执行迁移
-    for (auto iter = weight2serviceIndex.begin(); iter->second != tasks[s].task_type; iter++) {
-      if (targetNode == services[iter->second].node_index) {
-        services[iter->second].node_index = -1; // 标记迁移回 cloud
-        source_categories &sc_cur = service_statistics[TO_MAPPED_TASK_TYPE(iter->second)].busy_source;
-        chancelDeploy(sc_cur, nodes[targetNode]);
+    //*** 3. 执行迁移，将目标节点上的服务迁出一部分到 cloud，然后迁入 t
+    auto &sc = get_source_categories(service_index, targetNode);
+    for (auto iter = weight2serviceIndex.begin(); iter->second != service_index; iter++) {
+      if (targetNode == services[iter->second].node_index && services[iter->second].waiting_tasks.empty()) {
+        services[iter->second].node_index = CLOUD_NODE_INDEX; // 标记迁移回 cloud
+        chancelDeploy(get_source_categories(iter->second, targetNode), nodes[targetNode]);
+        // 对迁移到 cloud 的服务插入迁移任务
+        task adjust2cloud_task;
+        adjust2cloud_task.is_transmission_task = true; // 标记临时迁移任务
+        adjust2cloud_task.arrive_time = // 消耗的时间是在 cloud 上重新部署的时间
+                tasks[t].request_time + get_per_node_service_date(iter->second, CLOUD_NODE_INDEX).redeploy_time;
+        adjust2cloud_task.processing_time = adjust2cloud_task.arrive_time;
+        tasks.push_back(adjust2cloud_task);
+        services[iter->second].waiting_tasks.push(tasks.size() - 1);
+
         // 如果可以部署成功了，执行迁移
         if (checkDeploy(sc, nodes[targetNode])) {
           doDeploy(sc, nodes[targetNode]);
-          services[tasks[s].task_type].node_index = targetNode;
-          break;
+          services[service_index].node_index = targetNode;
+
+          // 对迁移到 targetNode 的服务插入了迁移任务
+          task adjust2edge_task;
+          adjust2edge_task.is_transmission_task = true; // 标记临时迁移任务
+          adjust2edge_task.arrive_time = // 消耗的时间是在 targetNode 上重新部署的时间
+                  tasks[t].request_time + get_per_node_service_date(service_index, targetNode).redeploy_time;
+          if (services[service_index].waiting_tasks.empty())
+            adjust2edge_task.processing_time = adjust2edge_task.arrive_time;
+          tasks.push_back(adjust2edge_task);
+          services[service_index].waiting_tasks.push(tasks.size() - 1);
         }
+
+        break;
       }
     }
 
@@ -82,13 +107,13 @@ public:
   void deployment() override {
     // 顺序遍历 tasks，尽量为每一个服务找一个 edge 节点部署
     for (int s = 0; s < TASK_CATEGORY_NUMS; s++) {
-      for (int i = 0; i < EDGE_NODE_NUMS; ++i) {
-        source_categories &sc = service_statistics[TO_MAPPED_TASK_TYPE(services[s].task_type)].busy_source;
+      for (int i = 0; i < EDGE_NODE_NUMS; ++i) { // 最后一个节点是 cloud 兜底
+        source_categories &sc = get_source_categories(s, i);
         // 如果 n 可以部署 s，就部署 s
         if (checkDeploy(sc, nodes[i])) {
           services[s].node_index = i;
           // 初始负载设置为加速比
-          services[s].weight = service_statistics[TO_MAPPED_TASK_TYPE(services[s].task_type)].acceleration_ratio;
+          services[s].weight = service_statistics[TO_MAPPED_TASK_TYPE(s)].acceleration_ratio;
           // 更新 n 的剩余资源
           doDeploy(sc, nodes[i]);
           // 初始负载设置为加速比
@@ -99,8 +124,8 @@ public:
   }
 
   void run() override {
-    int t = 0;
-    for (double clock = 1;; clock++) { // 1ms 一次，计算整个时间线上任务处理情况
+    int t = 0; // 任务遍历标记
+    for (int clock = 10;; clock += 10) { // 10ms 一次，计算整个时间线上任务处理情况
       bool has_remain_task = false; // 标记是否还有任务需要处理
 
       // 1. 更新衰减负载，所有任务都衰减一次
@@ -108,31 +133,19 @@ public:
       // 2. 处理这一个帧内的所有新到达的任务
       for (; t < TASK_CATEGORY_NUMS && tasks[t].request_time < clock; t++) {
         service &s = services[tasks[t].task_type];
-        service_data &sd = service_statistics[TO_MAPPED_TASK_TYPE(tasks[t].task_type)];
 
         // 如果当前调用的服务在云端，触发云边调整
-        if (s.node_index == -1) {
-          if (adjust(t)) { // 调整成功时需要插入一个迁移任务消耗时间
-            // todo 这里只对迁移到 edge 的服务插入了迁移任务，实际上迁移到 cloud 的服务也需要
-            task adjustTask;
-            adjustTask.is_transmission_task = true; // 标记临时迁移任务
-            adjustTask.remain_time = sd.edge_reDeploy_time;
-            adjustTask.arrive_time = tasks[t].request_time;
-            if (s.waiting_tasks.empty())
-              adjustTask.processing_time = adjustTask.arrive_time;
-            tasks.push_back(adjustTask);
-            s.waiting_tasks.push(tasks.size() - 1);
-          }
+        if (s.node_index == CLOUD_NODE_INDEX && s.waiting_tasks.empty()) {
+          adjust(t); // 调整成功时需要插入一个迁移任务消耗时间
+
         }
-        // 将新到达的任务挂入对应服务的等待队列
-        if (s.node_index == -1)
-          tasks[t].arrive_time = tasks[t].request_time + sd.cloud_transmission_time;
-        else
-          tasks[t].arrive_time = tasks[t].request_time + sd.edge_transmission_time;
+        // 设置任务到达时间
+        tasks[t].arrive_time =
+                tasks[t].request_time + get_per_node_service_date(tasks[t].task_type, s.node_index).transmission_time;
         // 空闲服务可以直接开始处理
         if (s.waiting_tasks.empty())
           tasks[t].processing_time = tasks[t].arrive_time;
-
+        // 将新到达的任务挂入对应服务的等待队列
         s.waiting_tasks.push(t);
       }
 
@@ -144,20 +157,13 @@ public:
           auto &cur_task = tasks[s.waiting_tasks.front()];
           // 队首任务的开始执行时间在这一帧之内，则需要被处理
           if (cur_task.processing_time < clock) {
-            if (s.node_index == -1) {
-              cur_task.complete_time = cur_task.processing_time +
-                                       service_statistics[TO_MAPPED_TASK_TYPE(s.task_type)].cloud_transmission_time;
-              cur_task.respond_time = cur_task.complete_time +
-                                      service_statistics[TO_MAPPED_TASK_TYPE(s.task_type)].cloud_transmission_time;
-            } else {
-              cur_task.complete_time = cur_task.processing_time +
-                                       service_statistics[TO_MAPPED_TASK_TYPE(s.task_type)].edge_processing_time;
-              cur_task.respond_time = cur_task.complete_time +
-                                      service_statistics[TO_MAPPED_TASK_TYPE(s.task_type)].edge_transmission_time;
-            }
+            cur_task.complete_time = cur_task.processing_time +
+                                     get_per_node_service_date(s.task_type, s.node_index).processing_time;
+            cur_task.respond_time =
+                    cur_task.complete_time + get_per_node_service_date(s.task_type, s.node_index).transmission_time;
             // 计算这个任务在这一帧之内运行的时间
-            double running_time =
-                    std::min(clock, cur_task.complete_time) - std::max(cur_task.processing_time, clock - 1);
+            int running_time =
+                    std::min(clock, cur_task.complete_time) - std::max(cur_task.processing_time, clock - 10);
             // 更新运行这个任务贡献的负载
             load_update_single(s, running_time);
             // 本次任务处理超过了这一帧，不用继续遍历等待队列了
