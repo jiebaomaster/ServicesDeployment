@@ -32,7 +32,8 @@ class PdDeployer : public Deployer {
     auto &cur_sd = get_per_node_service_date(s.task_type, s.node_index);
     auto &cloud_sd = get_per_node_service_date(s.task_type, CLOUD_NODE_INDEX);
     s.weight += running_time
-            *(double) (cloud_sd.processing_time + cloud_sd.transmission_time) / (cur_sd.processing_time + cur_sd.transmission_time);
+                * (double) (cloud_sd.processing_time + cloud_sd.transmission_time) /
+                (cur_sd.processing_time + cur_sd.transmission_time);
     weight2serviceIndex.insert({s.weight, s.task_type});
   }
 
@@ -44,7 +45,7 @@ class PdDeployer : public Deployer {
    * @param to
    */
   void do_migrate(int t, int service_index, int from, int to) {
-    std::cout << "for task " << t << " migrate " << service_index << " from " << from << " to " << to << std::endl;
+//    std::cout << "for task " << t << " migrate " << service_index << " from " << from << " to " << to << std::endl;
     // 迁出
     chancelDeploy(get_source_categories(service_index, from), nodes[from]);
     nodes[from].deploy_service.remove(service_index);
@@ -92,7 +93,7 @@ class PdDeployer : public Deployer {
       node_weight[cur_node] += services[iter->second].weight;
       // todo 如果可以部署成功了说明找到了目标 edge 节点，权重差距应该和重部署时间相关
       if (checkDeploy(get_source_categories(service_index, cur_node), n[cur_node])
-          && services[service_index].weight - node_weight[cur_node] > redeploy_time/10) {
+          && services[service_index].weight - node_weight[cur_node] > redeploy_time / 10) {
         targetNode = services[iter->second].node_index;
         break;
       }
@@ -118,6 +119,7 @@ class PdDeployer : public Deployer {
 
 public:
   void deployment() override {
+    weight2serviceIndex.clear();
     // 顺序遍历 services，尽量为每一个服务找一个 edge 节点部署
     for (int s = 0; s < TASK_CATEGORY_NUMS; s++) {
       for (int i = 0; i <= EDGE_NODE_NUMS; ++i) { // 最后一个节点是 cloud 兜底
@@ -126,12 +128,12 @@ public:
         if (checkDeploy(sc, nodes[i])) {
           services[s].node_index = i;
 
+          // 初始负载设置为加速比
           auto &cur_sd = get_per_node_service_date(s, i);
           auto &cloud_sd = get_per_node_service_date(s, CLOUD_NODE_INDEX);
-          services[s].weight += CLOCK_TICK * ((double)cur_sd.redeploy_time / 3500)
-                      *(double) (cloud_sd.processing_time + cloud_sd.transmission_time) / (cur_sd.processing_time + cur_sd.transmission_time);
-          // 初始负载设置为加速比
-//          services[s].weight = service_statistics[TO_MAPPED_TASK_TYPE(s)].initial_weight;
+          services[s].weight += CLOCK_TICK * ((double) cur_sd.redeploy_time / 3500)
+                                * (double) (cloud_sd.processing_time + cloud_sd.transmission_time) /
+                                (cur_sd.processing_time + cur_sd.transmission_time);
           // 更新 n 的剩余资源
           doDeploy(sc, nodes[i]);
           nodes[i].deploy_service.push_back(s);
@@ -143,25 +145,17 @@ public:
     }
   }
 
-  void clock_tick_handler() override {
-    load_update_all();
-  }
-  void new_task_handler(service& s, int t) override {
-    if (s.node_index == CLOUD_NODE_INDEX && s.waiting_tasks.size() == 1) {
-      adjust(t);
-    }
-  }
-  void task_process_handler(service& s, long long running_time) override {
-    load_update_single(s, running_time);
-  }
-
+  /**
+  * swarm spread 部署策略
+  * 如果节点配置相同，选择一个正在运行的容器数量最少的那个节点，即尽量平摊容器到各个节点
+  */
   void deployment_swarm_spread() {
-    // 如果节点配置相同，选择一个正在运行的容器数量最少的那个节点，即尽量平摊容器到各个节点
+    weight2serviceIndex.clear();
     for (int s = 0; s < TASK_CATEGORY_NUMS; s++) {
       int targetNode = -1;
       for (int i = 0; i <= EDGE_NODE_NUMS; ++i) { // 最后一个节点是 cloud 兜底
         source_categories &sc = get_source_categories(s, i);
-        // 如果 n 可以部署 s，就部署 s
+        // 如果 n 可以部署
         if (checkDeploy(sc, nodes[i])) {
           if (targetNode == -1 || nodes[targetNode].deploy_service.size() > nodes[i].deploy_service.size()) {
             targetNode = i;
@@ -169,16 +163,68 @@ public:
         }
       }
       services[s].node_index = targetNode;
-      // 初始负载设置为加速比
-      services[s].weight = service_statistics[TO_MAPPED_TASK_TYPE(s)].initial_weight;
       // 更新 n 的剩余资源
       doDeploy(get_source_categories(s, targetNode), nodes[targetNode]);
       nodes[targetNode].deploy_service.push_back(s);
+
       // 初始负载设置为加速比
+      auto &cur_sd = get_per_node_service_date(s, targetNode);
+      auto &cloud_sd = get_per_node_service_date(s, CLOUD_NODE_INDEX);
+      services[s].weight += CLOCK_TICK * ((double) cur_sd.redeploy_time / 3500)
+                            * (double) (cloud_sd.processing_time + cloud_sd.transmission_time) /
+                            (cur_sd.processing_time + cur_sd.transmission_time);
       weight2serviceIndex.insert({services[s].weight, s});
     }
   }
 
+  void deployment_k8s_NodeResourcesBalancedAllocation() {
+    weight2serviceIndex.clear();
+    for (int s = 0; s < TASK_CATEGORY_NUMS; s++) {
+      int targetNode = -1;
+      double min_score = 1.0;
+      for (int i = 0; i < EDGE_NODE_NUMS; ++i) { // 最后一个节点是 cloud 兜底
+        source_categories &sc = get_source_categories(s, i);
+        // 如果 n 可以部署
+        if (checkDeploy(sc, nodes[i])) {
+          auto &cur_sd = get_per_node_service_date(s, i);
+          // 1 - Abs[CPU(Request / Allocatable) - Mem(Request / Allocatable)]
+          auto score = abs((double) cur_sd.busy_source.cpu / nodes[i].remain_source.cpu -
+                           (double) cur_sd.busy_source.memory / nodes[i].remain_source.memory);
+          if (min_score > score) {
+            min_score = score;
+            targetNode = i;
+          }
+        }
+      }
+      if (targetNode == -1) targetNode = CLOUD_NODE_INDEX;
+      services[s].node_index = targetNode;
+      // 更新 n 的剩余资源
+      doDeploy(get_source_categories(s, targetNode), nodes[targetNode]);
+      nodes[targetNode].deploy_service.push_back(s);
+
+      // 初始负载设置为加速比
+      auto &cur_sd = get_per_node_service_date(s, targetNode);
+      auto &cloud_sd = get_per_node_service_date(s, CLOUD_NODE_INDEX);
+      services[s].weight += CLOCK_TICK * ((double) cur_sd.redeploy_time / 3500)
+                            * (double) (cloud_sd.processing_time + cloud_sd.transmission_time) /
+                            (cur_sd.processing_time + cur_sd.transmission_time);
+      weight2serviceIndex.insert({services[s].weight, s});
+    }
+  }
+
+  void clock_tick_handler() override {
+    load_update_all();
+  }
+
+  void new_task_handler(service &s, int t) override {
+    if (s.node_index == CLOUD_NODE_INDEX && s.waiting_tasks.size() == 1) {
+      adjust(t);
+    }
+  }
+
+  void task_process_handler(service &s, long long running_time) override {
+    load_update_single(s, running_time);
+  }
 
 };
 

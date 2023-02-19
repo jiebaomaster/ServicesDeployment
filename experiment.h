@@ -93,17 +93,20 @@ std::vector<node> nodes; // 生成的节点
 
 const int TASK_NUMS = 10000; // 生成任务的数量
 const int TASK_CATEGORY_NUMS = mapped_task_nums * 10; // 生成任务（服务）的种类
-const int EDGE_NODE_NUMS = mapped_node_nums * 4; // 边缘端节点个数
-const int CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
+int EDGE_NODE_NUMS = mapped_node_nums * 4; // 边缘端节点个数
+int CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
 int CLOCK_TICK = 100; // 帧长度
 // 生成任务序列的参数
-double exponential_distribution_lambda = 0.5; // 任务时间间隔，指数分布
+double exponential_distribution_lambda = 3; // 任务时间间隔，指数分布
 double normal_distribution_mean = TASK_CATEGORY_NUMS / 2.0; // 任务类型，正态分布均值
 double normal_distribution_stddev = TASK_CATEGORY_NUMS / 7.0; // 任务类型，正态分布方差
 
-
-#define TO_MAPPED_TASK_TYPE(t) (task_type)((t) % mapped_task_nums)
-#define TO_MAPPED_NODE_TYPE(t) (node_type)((t) % mapped_node_nums)
+static inline int TO_MAPPED_TASK_TYPE(int t) {
+  return (task_type)((t) % mapped_task_nums);
+}
+static inline int TO_MAPPED_NODE_TYPE(int t) {
+  return (node_type)((t) % mapped_node_nums);
+}
 
 static inline per_node_service_date &get_per_node_service_date(int service_index, int node_index) {
   if (node_index == CLOUD_NODE_INDEX)

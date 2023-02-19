@@ -7,7 +7,7 @@
 
 #include "experiment.h"
 
-class Simulator {
+class   Simulator {
   long long total_time; // 系统处理完所有任务花费的时间
   std::vector<double> real_resource_utilization; // 平均实际资源利用率
   std::vector<double> expected_resource_utilization; // 平均期望资源利用率
@@ -74,22 +74,19 @@ public:
         wait_time_sum += t.respond_time - t.request_time;
       }
     }
-    std::cout << "平均任务响应时间：" << wait_time_sum / TASK_NUMS << std::endl;
 
-    // 边缘节点的期望资源利用率和实际资源利用率
-    std::cout << "（10ms周期）平均期望资源利用率："
+    std::cout << wait_time_sum / TASK_NUMS << " "
               << std::accumulate(expected_resource_utilization.begin(), expected_resource_utilization.end(), 0.0) /
-                 expected_resource_utilization.size()
-              << std::endl
-              << "（10ms周期）平均实际资源利用率："
+                 expected_resource_utilization.size() << "/"
               << std::accumulate(real_resource_utilization.begin(), real_resource_utilization.end(), 0.0) /
-                 real_resource_utilization.size()
-              << std::endl;
-
-    std::cout << "任务执行时间：" << total_time << std::endl;
+                 real_resource_utilization.size() << " " << total_time << std::endl;
   }
 
   void run(Deployer &deployer, bool use_adjust) {
+    total_time = 0;
+    expected_resource_utilization.clear();
+    real_resource_utilization.clear();
+
     int t = 0; // 任务遍历标记
     for (long long clock = CLOCK_TICK;; clock += CLOCK_TICK) { // 10ms 一次，计算整个时间线上任务处理情况
 //      std::cout << "clock: " << clock << std::endl;

@@ -354,14 +354,14 @@ void initTasks() {
   // 生成 TASK_NUMS 个按指数分布到达的随机任务，任务的种类服从随机分布
   for (int i = 0; i < TASK_NUMS; i++) {
     // 任务种类
-//    int t = rand() % TASK_CATEGORY_NUMS;
-    int t = round(nd(ngen));
-    if (t < 0) t = 0;
-    else if (t >= TASK_CATEGORY_NUMS) t = TASK_CATEGORY_NUMS - 1;
+    int t = -1;
+    while (t < 0 || t >= TASK_CATEGORY_NUMS) {
+      t = round(nd(ngen));
+    }
     tasks[i].task_type = t;
 //    tasks[i].mapped_task_type = TO_MAPPED_TASK_TYPE(t);
     // 到达时间
-    cur += ed(egen) * 100;
+    cur += ed(egen) * 1000;
     tasks[i].request_time = (long long) cur;
 
   }
@@ -371,14 +371,19 @@ void initTasks() {
     task_times[tasks[i].task_type]++;
 //    cout << "<" << tasks[i].task_type << ", " << tasks[i].request_time << "> ";
   }
-  cout << endl;
-  for(auto t : task_times) {
-    cout << t << ", ";
+//  cout << endl;
+  for (auto t: task_times) {
+//    cout << t << ", ";
   }
-  cout << endl;
+//  cout << endl;
 }
 
-int main() {
+void test_one_turn() {
+  auto s = new Simulator();
+
+  nodes.clear();
+  services.clear();
+  tasks.clear();
   initNodes();
   initServices();
   initTasks();
@@ -387,13 +392,14 @@ int main() {
   std::vector<task> tasks_back = tasks; // 时间轴上将要到达的任务序列
   std::vector<node> nodes_back = nodes; // 生成的节点
 
-  auto s = new Simulator();
-
+  cout << "pd ";
   PdDeployer d;
   d.deployment();
   s->run(d, true);
   s->analysis();
 
+  // swarm spread unadaptive
+  cout << "su ";
   services = services_back;
   tasks = tasks_back;
   nodes = nodes_back;
@@ -401,10 +407,74 @@ int main() {
   s->run(d, false);
   s->analysis();
 
+  // swarm spread adaptive
+  cout << "sa ";
   services = services_back;
   tasks = tasks_back;
   nodes = nodes_back;
   d.deployment_swarm_spread();
   s->run(d, true);
   s->analysis();
+
+  // k8s unadaptive
+  cout << "ku ";
+  services = services_back;
+  tasks = tasks_back;
+  nodes = nodes_back;
+  d.deployment_k8s_NodeResourcesBalancedAllocation();
+  s->run(d, false);
+  s->analysis();
+
+  // k8s adaptive
+  cout << "ka ";
+  services = services_back;
+  tasks = tasks_back;
+  nodes = nodes_back;
+  d.deployment_k8s_NodeResourcesBalancedAllocation();
+  s->run(d, true);
+  s->analysis();
+}
+
+void param_reset() {
+  EDGE_NODE_NUMS = mapped_node_nums * 4; // 边缘端节点个数
+  CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
+// 生成任务序列的参数
+  exponential_distribution_lambda = 3; // 任务时间间隔，指数分布
+  normal_distribution_mean = TASK_CATEGORY_NUMS / 2.0; // 任务类型，正态分布均值
+  normal_distribution_stddev = TASK_CATEGORY_NUMS / 7.0; // 任务类型，正态分布方差
+}
+
+// 指标随任务密度变化
+void test_exponential_distribution_lambda() {
+  param_reset();
+  for (exponential_distribution_lambda = 1;
+       exponential_distribution_lambda < 11; exponential_distribution_lambda += 1) {
+    cout << ">>>>> exponential_distribution_lambda = " << exponential_distribution_lambda << endl;
+    test_one_turn();
+  }
+}
+
+// 指标随边缘节点个数变化
+void test_EDGE_NODE_NUMS() {
+  param_reset();
+  for (EDGE_NODE_NUMS = mapped_node_nums; EDGE_NODE_NUMS < mapped_node_nums * 11; EDGE_NODE_NUMS += mapped_node_nums) {
+    cout << ">>>>> EDGE_NODE_NUMS = " << EDGE_NODE_NUMS << endl;
+    CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
+    test_one_turn();
+  }
+}
+
+// 指标随任务类型聚集程度变化
+void test_normal_distribution_stddev() {
+  param_reset();
+  for (normal_distribution_stddev = 2; normal_distribution_stddev < 22; normal_distribution_stddev += 2) {
+    cout << ">>>>> normal_distribution_stddev = " << normal_distribution_stddev << endl;
+    test_one_turn();
+  }
+}
+
+int main() {
+//  test_exponential_distribution_lambda();
+//  test_EDGE_NODE_NUMS();
+  test_normal_distribution_stddev();
 }
