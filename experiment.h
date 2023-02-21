@@ -22,7 +22,6 @@ enum task_type {
 struct source_categories {
   int cpu;
   int gpu;
-  int gpu_memory;
   int memory;
 };
 
@@ -123,22 +122,31 @@ static inline source_categories &get_source_categories(int service_index, int no
 static inline bool checkDeploy(const source_categories &usage, const node &n) {
   return usage.cpu <= n.remain_source.cpu
          && usage.memory <= n.remain_source.memory
-         && usage.gpu_memory <= n.remain_source.gpu_memory
          && usage.gpu <= n.remain_source.gpu;
 }
 
 static inline void doDeploy(const source_categories &usage, node &n) {
   n.remain_source.cpu -= usage.cpu;
   n.remain_source.memory -= usage.memory;
-  n.remain_source.gpu_memory -= usage.gpu_memory;
   n.remain_source.gpu -= usage.gpu;
 }
 
 static inline void chancelDeploy(const source_categories &usage, node &n) {
   n.remain_source.cpu += usage.cpu;
   n.remain_source.memory += usage.memory;
-  n.remain_source.gpu_memory += usage.gpu_memory;
   n.remain_source.gpu += usage.gpu;
+}
+
+double cal_resource_utilization_helper(source_categories &sc, int i) {
+  auto &node_total_source = node_statistics[TO_MAPPED_NODE_TYPE(i)].total_source;
+  double cpu = (double) sc.cpu / node_total_source.cpu;
+  double memory = (double) sc.memory / node_total_source.memory;
+  if (node_total_source.gpu == 0) {
+    return (cpu + memory) / 2;
+  } else {
+    double gpu = (double) sc.gpu / node_total_source.gpu;
+    return (cpu + memory + gpu) / 4;
+  }
 }
 
 class Deployer {

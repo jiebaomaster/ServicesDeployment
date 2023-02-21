@@ -7,24 +7,11 @@
 
 #include "experiment.h"
 
-class   Simulator {
+class Simulator {
   long long total_time; // 系统处理完所有任务花费的时间
   std::vector<double> real_resource_utilization; // 平均实际资源利用率
   std::vector<double> expected_resource_utilization; // 平均期望资源利用率
 public:
-
-  double cal_resource_utilization_helper(source_categories &sc, int i) {
-    auto &node_total_source = node_statistics[TO_MAPPED_NODE_TYPE(i)].total_source;
-    double cpu = (double) sc.cpu / node_total_source.cpu;
-    double memory = (double) sc.memory / node_total_source.memory;
-    if (node_total_source.gpu == 0) {
-      return (cpu + memory) / 2;
-    } else {
-      double gpu = (double) sc.gpu / node_total_source.gpu;
-      double gpu_memory = (double) sc.gpu_memory / node_total_source.gpu_memory;
-      return (cpu + memory + gpu + gpu_memory) / 4;
-    }
-  }
 
   // 计算一帧的平均资源利用率
   void cal_resource_utilization(long long current_time) {
@@ -40,19 +27,17 @@ public:
 
       per_node_expected_resource_utilization[i] = 1.0 - cal_resource_utilization_helper(nodes[i].remain_source, i);
 
-      source_categories real_sc{0, 0, 0, 0};
+      source_categories real_sc{0, 0, 0};
       for (auto s: nodes[i].deploy_service) {
         // real_resource_utilization = sum(real_use)/total
         if (services[s].waiting_tasks.empty() || tasks[services[s].waiting_tasks.front()].arrive_time >= current_time) {
           real_sc.cpu += get_per_node_service_date(s, i).free_source.cpu;
           real_sc.memory += get_per_node_service_date(s, i).free_source.memory;
           real_sc.gpu += get_per_node_service_date(s, i).free_source.gpu;
-          real_sc.gpu_memory += get_per_node_service_date(s, i).free_source.gpu_memory;
         } else {
           real_sc.cpu += get_per_node_service_date(s, i).busy_source.cpu;
           real_sc.memory += get_per_node_service_date(s, i).busy_source.memory;
           real_sc.gpu += get_per_node_service_date(s, i).busy_source.gpu;
-          real_sc.gpu_memory += get_per_node_service_date(s, i).busy_source.gpu_memory;
         }
       }
       per_node_real_resource_utilization[i] = cal_resource_utilization_helper(real_sc, i);
@@ -66,7 +51,7 @@ public:
   }
 
 // 对模拟结果的分析
-  void analysis() {
+  void analysis(std::vector<double> &avg_wait_time_table, std::vector<double> &avg_real_resource_utilization_table) {
     long long wait_time_sum = 0.0;
     // 平均任务响应时间
     for (auto &t: tasks) {
@@ -75,11 +60,20 @@ public:
       }
     }
 
-    std::cout << wait_time_sum / TASK_NUMS << " "
-              << std::accumulate(expected_resource_utilization.begin(), expected_resource_utilization.end(), 0.0) /
-                 expected_resource_utilization.size() << "/"
-              << std::accumulate(real_resource_utilization.begin(), real_resource_utilization.end(), 0.0) /
-                 real_resource_utilization.size() << " " << total_time << std::endl;
+    auto avg_wait_time = (double) wait_time_sum / TASK_NUMS;
+    auto avg_expected_resource_utilization =
+            std::accumulate(expected_resource_utilization.begin(), expected_resource_utilization.end(), 0.0) /
+            expected_resource_utilization.size();
+    auto avg_real_resource_utilization =
+            std::accumulate(real_resource_utilization.begin(), real_resource_utilization.end(), 0.0) /
+            real_resource_utilization.size();
+
+    avg_wait_time_table.push_back(avg_wait_time);
+    avg_real_resource_utilization_table.push_back(avg_real_resource_utilization);
+
+    std::cout << avg_wait_time << " "
+              << avg_expected_resource_utilization << "/" << avg_real_resource_utilization << " "
+              << total_time << std::endl;
   }
 
   void run(Deployer &deployer, bool use_adjust) {

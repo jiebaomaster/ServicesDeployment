@@ -12,19 +12,19 @@ void initNodes() {
   // 初始化各节点的指标，实际只有5种类型
   node_statistics = {
           {.total_source = { // pi3
-                  400, 0, 0, 100
+                  400, 0, 100
           }},
           {.total_source = { // pi4b
-                  400, 0, 0, 100
+                  400, 0, 100
           }},
           {.total_source = { // jetson nano
-                  400, 100, 100, 100
+                  400, 100, 100
           }},
           {.total_source = { // xavier nx
-                  600, 100, 100, 100
+                  600, 100, 100
           }},
           {.total_source = { // cloud，资源无限
-                  INT32_MAX, INT32_MAX, INT32_MAX, INT32_MAX
+                  INT32_MAX, INT32_MAX, INT32_MAX
           }}
   };
   // EDGE_NODE_NUMS 个 edge node
@@ -45,28 +45,28 @@ void initServices() {
 //                  .per_node_service_date = {
 //                          { // pi3
 //                                  303, 870, 10,
-//                                  {0, 0, 0, 1},
-//                                  {26, 0, 1, 1},
+//                                  {0, 0, 1},
+//                                  {26, 0, 1},
 //                          },
 //                          { // pi4b
 //                                  145, 870, 10,
-//                                  {1, 0, 1, 1},
-//                                  {1,  0, 1, 1},
+//                                  {1, 0, 1},
+//                                  {1,  0, 1},
 //                          },
 //                          { // jetson nano
 //                                  153, 870, 10,
-//                                  {1, 1, 1, 1},
-//                                  {1,  1, 1, 1},
+//                                  {1, 1, 1},
+//                                  {1,  1, 1},
 //                          },
 //                          { // xavier nx ✅
 //                                  12, 870, 7602,
-//                                  {0, 0, 340, 340},
-//                                  {96,  76, 1120, 1120},
+//                                  {0, 0, 340},
+//                                  {96,  76, 1120},
 //                          },
 //                          { // cloud
 //                                  10,  870, 10,
-//                                  {0, 0, 0, 1},
-//                                  {1,  1, 1, 1},
+//                                  {0, 0, 1},
+//                                  {1, 1, 1},
 //                          }
 //                  }},
 //          { // dlib_face_detect 全 cpu
@@ -74,28 +74,28 @@ void initServices() {
 //                  .per_node_service_date = {
 //                          { // pi3 ✅
 //                                  10180, 431, 12678,
-//                                  {0, 0, 0, 17},
-//                                  {100, 0, 0, 31},
+//                                  {0, 0, 17},
+//                                  {100, 0, 31},
 //                          },
 //                          { // pi4b ✅
 //                                  7790, 431, 10336,
-//                                  {0, 0, 0, 2},
-//                                  {99, 0, 0, 4},
+//                                  {0, 0, 2},
+//                                  {99, 0, 4},
 //                          },
 //                          { // jetson nano ✅
 //                                  5230, 431, 6588,
-//                                  {0, 0, 0, 5},
-//                                  {99, 0, 0, 7},
+//                                  {0, 0, 5},
+//                                  {99, 0, 7},
 //                          },
 //                          { // xavier nx ✅
 //                                  2340, 431, 4488,
-//                                  {0, 0, 0, 1},
-//                                  {97, 0, 0, 4},
+//                                  {0, 0, 1},
+//                                  {97, 0, 4},
 //                          },
 //                          { // cloud ✅
 //                                  1082,  2420, 2444,
-//                                  {0, 0, 0, 1},
-//                                  {49, 0, 0, 2},
+//                                  {0, 0, 1},
+//                                  {49, 0, 2},
 //                          }
 //                  }
 //          },
@@ -103,29 +103,29 @@ void initServices() {
 //                  .initial_weight = 1,
 //                  .per_node_service_date = {
 //                          { // pi3 ❎
-//                                  10180, 431, 12678,
-//                                  {0, 0, 0, 17},
-//                                  {100, 0, 0, 31},
+//                                  INT32_MAX, 431, 12678,
+//                                  {INT32_MAX, 0, 0},
+//                                  {INT32_MAX, 0,  0},
 //                          },
 //                          { // pi4b ✅
 //                                  3350, 431, 1490,
-//                                  {0, 0, 0, 2},
-//                                  {200, 0, 0, 3},
+//                                  {0, 0, 2},
+//                                  {200, 0, 3},
 //                          },
 //                          { // jetson nano ✅
 //                                  1878, 431, 1092,
-//                                  {0, 0, 0, 4},
-//                                  {143, 0, 0, 5},
+//                                  {0, 0, 4},
+//                                  {143, 0, 5},
 //                          },
 //                          { // xavier nx ✅
 //                                  2261, 431, 1751,
-//                                  {0, 0, 0, 2},
-//                                  {77, 0, 0, 2},
+//                                  {0, 0, 2},
+//                                  {77, 0, 2},
 //                          },
 //                          { // cloud ✅
 //                                  660,  2420, 563,
-//                                  {0, 0, 0, 1},
-//                                  {15, 0, 0, 2},
+//                                  {0, 0, 1},
+//                                  {15, 0, 2},
 //                          }
 //                  }
 //          },
@@ -134,28 +134,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3
                                   303, 431,  3500,
-                                  {0, 0, 0, 5},
-                                  {27, 0, 0, 10},
+                                  {0, 0, 5},
+                                  {27, 0, 10},
                           },
                           { // pi4b
                                   145, 431,  3500,
-                                  {0, 0, 0, 2},
-                                  {30, 0, 0, 8},
+                                  {0, 0, 2},
+                                  {30, 0, 8},
                           },
                           { // jetson nano
                                   153, 431,  3500,
-                                  {0, 0, 0, 2},
-                                  {31, 0, 0, 5},
+                                  {0, 0, 2},
+                                  {31, 0, 5},
                           },
                           { // xavier nx
                                   214, 431,  3500,
-                                  {0, 0, 0, 1},
-                                  {24, 0, 0, 3},
+                                  {0, 0, 1},
+                                  {24, 0, 3},
                           },
                           { // cloud
                                   120, 2420, 3500,
-                                  {0, 0, 0, 0},
-                                  {0,  0, 0, 0},
+                                  {0, 0, 0},
+                                  {0,  0, 0},
                           }
                   }},
           {// PoseEstimation
@@ -163,28 +163,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3 ❎
                                   INT32_MAX, 0,    0,
-                                  {INT32_MAX, 0, 0,  0},
-                                  {INT32_MAX, 0,  0,  0}
+                                  {INT32_MAX, 0, 0},
+                                  {INT32_MAX, 0,  0}
                           },
                           { // pi4b
                                   971,       300,  7000,
-                                  {0,         0, 0,  25},
-                                  {25,        0,  0,  37},
+                                  {0,         0, 25},
+                                  {25,        0,  37},
                           },
                           { // jetson nano
                                   37,        300,  7000,
-                                  {0,         0, 40, 40},
-                                  {29,        91, 63, 63},
+                                  {0,         0, 40},
+                                  {29,        91, 63},
                           },
                           { // xavier nx
                                   29,        300,  7000,
-                                  {0,         0, 30, 30},
-                                  {29,        83, 70, 70},
+                                  {0,         0, 30},
+                                  {29,        83, 70},
                           },
                           { // cloud
                                   33,        2420, 7000,
-                                  {0,         0, 0,  0},
-                                  {0,         0,  0,  0},
+                                  {0,         0, 0},
+                                  {0,         0,  0},
                           }
                   }},
           {// yolov3_tiny
@@ -192,28 +192,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3 ❎
                                   INT32_MAX, 0,    0,
-                                  {INT32_MAX, 0, 0,  0},
-                                  {INT32_MAX, 0,  0,  0}
+                                  {INT32_MAX, 0, 0},
+                                  {INT32_MAX, 0,  0}
                           },
                           { // pi4b
                                   5000,      431,  7000,
-                                  {0,         0, 0,  40},
-                                  {25,        0,  0,  47},
+                                  {0,         0, 40},
+                                  {25,        0,  47},
                           },
                           { // jetson nano
                                   43,        431,  7000,
-                                  {0,         0, 50, 50},
-                                  {27,        83, 56, 56},
+                                  {0,         0, 50},
+                                  {27,        83, 56},
                           },
                           { // xavier nx
                                   29,        431,  615,
-                                  {0,         0, 70, 70},
-                                  {32,        89, 73, 73},
+                                  {0,         0, 70},
+                                  {32,        89, 73},
                           },
                           { // cloud
                                   283,       2420, 1916,
-                                  {0,         0, 0,  0},
-                                  {80,        0,  0,  4},
+                                  {0,         0, 0},
+                                  {80,        0,  4},
                           }
                   }},
           {// UNetSegmentation
@@ -221,28 +221,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3 ❎
                                   INT32_MAX, 0,    0,
-                                  {INT32_MAX, 0, 0,  0},
-                                  {INT32_MAX, 0,  0,  0},
+                                  {INT32_MAX, 0, 0},
+                                  {INT32_MAX, 0,  0},
                           },
                           { // pi4b
                                   588,       431,  7000,
-                                  {0,         0, 0,  89},
-                                  {95,        0,  0,  89},
+                                  {0,         0, 89},
+                                  {95,        0,  89},
                           },
                           { // jetson nano
                                   89,        431,  7000,
-                                  {0,         0, 55, 55},
-                                  {43,        88, 62, 62},
+                                  {0,         0, 55},
+                                  {43,        88, 62},
                           },
                           { // xavier nx
                                   18,        431,  7000,
-                                  {0,         0, 50, 50},
-                                  {49,        97, 69, 69},
+                                  {0,         0, 50},
+                                  {49,        97, 69},
                           },
                           { // cloud
                                   10,        2420, 3500,
-                                  {0,         0, 0,  0},
-                                  {0,         0,  0,  0},
+                                  {0,         0, 0},
+                                  {0,         0,  0},
                           }
                   }},
           {// MobileNetSSD
@@ -250,28 +250,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3 ❎
                                   INT32_MAX, 0,    0,
-                                  {INT32_MAX, 0, 0,  0},
-                                  {INT32_MAX, 0,  0,  0},
+                                  {INT32_MAX, 0, 0},
+                                  {INT32_MAX, 0,  0},
                           },
                           { // pi4b ❎
                                   INT32_MAX, 0,    0,
-                                  {INT32_MAX, 0, 0,  0},
-                                  {INT32_MAX, 0,  0,  0},
+                                  {INT32_MAX, 0, 0},
+                                  {INT32_MAX, 0,  0},
                           },
                           { // jetson nano
                                   56,        431,  7000,
-                                  {0,         0, 60, 60},
-                                  {36,        83, 65, 65},
+                                  {0,         0, 60},
+                                  {36,        83, 65},
                           },
                           { // xavier nx
                                   133,       431,  7000,
-                                  {0,         0, 55, 55},
-                                  {50,        99, 76, 76},
+                                  {0,         0, 55},
+                                  {50,        99, 76},
                           },
                           { // cloud
                                   45,        2420, 6000,
-                                  {0,         0, 0,  0},
-                                  {0,         0,  0,  0},
+                                  {0,         0, 0},
+                                  {0,         0,  0},
                           }
                   }},
           {// redis_server
@@ -279,28 +279,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3 ✅
                                   4, 10, 1914,
-                                  {1, 0, 0, 50},
-                                  {82, 0, 0, 50},
+                                  {1, 0, 50},
+                                  {82, 0, 50},
                           },
                           { // pi4b ✅
                                   3, 10, 2254,
-                                  {1, 0, 0, 7},
-                                  {79, 0, 0, 7},
+                                  {1, 0, 7},
+                                  {79, 0, 7},
                           },
                           { // jetson nano ✅
                                   1, 10, 1380,
-                                  {1, 0, 0, 13},
-                                  {75, 0, 0, 13},
+                                  {1, 0, 13},
+                                  {75, 0, 13},
                           },
                           { // xavier nx ✅
                                   1, 10, 845,
-                                  {1, 0, 0, 7},
-                                  {55, 0, 0, 7},
+                                  {1, 0, 7},
+                                  {55, 0, 7},
                           },
                           { // cloud
                                   1, 50, 845,
-                                  {0, 0, 0, 0},
-                                  {0,  0, 0, 0},
+                                  {0, 0, 0},
+                                  {0,  0, 0},
                           }
                   }},
           {// nodejs_http_server
@@ -308,28 +308,28 @@ void initServices() {
                   .per_node_service_date = {
                           { // pi3 ✅
                                   55, 351,  1961,
-                                  {0, 0, 0, 11},
-                                  {121, 0, 0, 13},
+                                  {0, 0, 11},
+                                  {121, 0, 13},
                           },
                           { // pi4b ✅
                                   11, 351,  1718,
-                                  {0, 0, 0, 1},
-                                  {106, 0, 0, 2},
+                                  {0, 0, 1},
+                                  {106, 0, 2},
                           },
                           { // jetson nano ✅
                                   15, 351,  989,
-                                  {0, 0, 0, 2},
-                                  {116, 0, 0, 5},
+                                  {0, 0, 2},
+                                  {116, 0, 5},
                           },
                           { // xavier nx ✅
                                   14, 351,  794,
-                                  {0, 0, 0, 2},
-                                  {114, 0, 0, 2},
+                                  {0, 0, 2},
+                                  {114, 0, 2},
                           },
                           { // cloud
                                   10, 1015, 701,
-                                  {0, 0, 0, 0},
-                                  {0,   0, 0, 0},
+                                  {0, 0, 0},
+                                  {0, 0, 0},
                           }
                   }}
   };
@@ -359,7 +359,6 @@ void initTasks() {
       t = round(nd(ngen));
     }
     tasks[i].task_type = t;
-//    tasks[i].mapped_task_type = TO_MAPPED_TASK_TYPE(t);
     // 到达时间
     cur += ed(egen) * 1000;
     tasks[i].request_time = (long long) cur;
@@ -378,7 +377,9 @@ void initTasks() {
 //  cout << endl;
 }
 
-void test_one_turn() {
+// 进行一轮所有算法的模拟
+void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
+                       vector<vector<double>> &avg_real_resource_utilization_table) {
   auto s = new Simulator();
 
   nodes.clear();
@@ -396,7 +397,7 @@ void test_one_turn() {
   PdDeployer d;
   d.deployment();
   s->run(d, true);
-  s->analysis();
+  s->analysis(avg_wait_time_table[0], avg_real_resource_utilization_table[0]);
 
   // swarm spread unadaptive
   cout << "su ";
@@ -405,7 +406,7 @@ void test_one_turn() {
   nodes = nodes_back;
   d.deployment_swarm_spread();
   s->run(d, false);
-  s->analysis();
+  s->analysis(avg_wait_time_table[1], avg_real_resource_utilization_table[1]);
 
   // swarm spread adaptive
   cout << "sa ";
@@ -414,7 +415,7 @@ void test_one_turn() {
   nodes = nodes_back;
   d.deployment_swarm_spread();
   s->run(d, true);
-  s->analysis();
+  s->analysis(avg_wait_time_table[2], avg_real_resource_utilization_table[2]);
 
   // k8s unadaptive
   cout << "ku ";
@@ -423,7 +424,7 @@ void test_one_turn() {
   nodes = nodes_back;
   d.deployment_k8s_NodeResourcesBalancedAllocation();
   s->run(d, false);
-  s->analysis();
+  s->analysis(avg_wait_time_table[3], avg_real_resource_utilization_table[3]);
 
   // k8s adaptive
   cout << "ka ";
@@ -432,9 +433,10 @@ void test_one_turn() {
   nodes = nodes_back;
   d.deployment_k8s_NodeResourcesBalancedAllocation();
   s->run(d, true);
-  s->analysis();
+  s->analysis(avg_wait_time_table[4], avg_real_resource_utilization_table[4]);
 }
 
+// 重置全局参数
 void param_reset() {
   EDGE_NODE_NUMS = mapped_node_nums * 4; // 边缘端节点个数
   CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
@@ -444,37 +446,66 @@ void param_reset() {
   normal_distribution_stddev = TASK_CATEGORY_NUMS / 7.0; // 任务类型，正态分布方差
 }
 
+// 按算法名称归类显示数据
+void
+show_result(vector<vector<double>> &avg_wait_time_table, vector<vector<double>> &avg_real_resource_utilization_table) {
+  vector<string> name{"pd", "su", "sa", "ku", "ka"};
+  cout << "name\tavg_wait_time" << endl;
+  for (int i = 0; i < 5; i++) {
+    cout << name[i] << "\t";
+    for (auto t: avg_wait_time_table[i])
+      cout << t << ", ";
+    cout << endl;
+  }
+  cout << "name\tavg_real_resource_utilization" << endl;
+  for (int i = 0; i < 5; i++) {
+    cout << name[i] << "\t";
+    for (auto t: avg_real_resource_utilization_table[i])
+      cout << t << ", ";
+    cout << endl;
+  }
+}
+
 // 指标随任务密度变化
 void test_exponential_distribution_lambda() {
   param_reset();
+  vector<vector<double>> avg_wait_time_table(5);
+  vector<vector<double>> avg_real_resource_utilization_table(5);
   for (exponential_distribution_lambda = 1;
-       exponential_distribution_lambda < 11; exponential_distribution_lambda += 1) {
+       exponential_distribution_lambda < 16; exponential_distribution_lambda += 1) {
     cout << ">>>>> exponential_distribution_lambda = " << exponential_distribution_lambda << endl;
-    test_one_turn();
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table);
   }
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table);
 }
 
 // 指标随边缘节点个数变化
 void test_EDGE_NODE_NUMS() {
   param_reset();
-  for (EDGE_NODE_NUMS = mapped_node_nums; EDGE_NODE_NUMS < mapped_node_nums * 11; EDGE_NODE_NUMS += mapped_node_nums) {
+  vector<vector<double>> avg_wait_time_table(5);
+  vector<vector<double>> avg_real_resource_utilization_table(5);
+  for (EDGE_NODE_NUMS = mapped_node_nums; EDGE_NODE_NUMS < mapped_node_nums * 16; EDGE_NODE_NUMS += mapped_node_nums) {
     cout << ">>>>> EDGE_NODE_NUMS = " << EDGE_NODE_NUMS << endl;
     CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
-    test_one_turn();
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table);
   }
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table);
 }
 
 // 指标随任务类型聚集程度变化
 void test_normal_distribution_stddev() {
   param_reset();
-  for (normal_distribution_stddev = 2; normal_distribution_stddev < 22; normal_distribution_stddev += 2) {
+  vector<vector<double>> avg_wait_time_table(5);
+  vector<vector<double>> avg_real_resource_utilization_table(5);
+  for (normal_distribution_stddev = 2; normal_distribution_stddev < 32; normal_distribution_stddev += 2) {
     cout << ">>>>> normal_distribution_stddev = " << normal_distribution_stddev << endl;
-    test_one_turn();
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table);
   }
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table);
 }
 
 int main() {
-//  test_exponential_distribution_lambda();
-//  test_EDGE_NODE_NUMS();
+  test_exponential_distribution_lambda();
+  test_EDGE_NODE_NUMS();
   test_normal_distribution_stddev();
 }
