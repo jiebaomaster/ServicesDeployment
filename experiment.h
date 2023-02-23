@@ -8,6 +8,8 @@
 #include <iostream>
 
 enum task_type {
+//  dlib_face_detect,
+  yolov5s_onnx,
   mobileNet_tf_lite,
   PoseEstimation,
   yolov3_tiny,
@@ -35,7 +37,7 @@ struct per_node_service_date {
 };
 
 struct service_data {
-  int initial_weight; // 初始权重
+  double initial_weight; // 初始权重
   // 该服务部署到每一个节点上的资源与性能参数
   std::vector<per_node_service_date> per_node_service_date;
 };
@@ -58,6 +60,7 @@ struct service {
 struct task {
   int task_type; // 任务类型，即对应的服务类型
   bool is_transmission_task = false; // 是否是临时插入的代表服务云边调整的任务
+  int process_node; // 被处理的节点
   long long request_time; // 任务到达时间
   long long arrive_time; // 任务传输到服务器的时间
   long long processing_time; // 任务开始处理的时间
@@ -91,8 +94,8 @@ std::vector<node_data> node_statistics; // 各个节点的基本信息
 std::vector<node> nodes; // 生成的节点
 
 const int TASK_NUMS = 10000; // 生成任务的数量
-const int TASK_CATEGORY_NUMS = mapped_task_nums * 10; // 生成任务（服务）的种类
-int EDGE_NODE_NUMS = mapped_node_nums * 4; // 边缘端节点个数
+const int TASK_CATEGORY_NUMS = mapped_task_nums * 20; // 生成任务（服务）的种类
+int EDGE_NODE_NUMS = mapped_node_nums * 5; // 边缘端节点个数
 int CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
 int CLOCK_TICK = 100; // 帧长度
 // 生成任务序列的参数
@@ -145,14 +148,29 @@ double cal_resource_utilization_helper(source_categories &sc, int i) {
     return (cpu + memory) / 2;
   } else {
     double gpu = (double) sc.gpu / node_total_source.gpu;
-    return (cpu + memory + gpu) / 4;
+    return (cpu + memory + gpu) / 3;
   }
+}
+
+double cal_speedup_helper(int service_index, int node_index) {
+  auto &cur_sd = get_per_node_service_date(service_index, node_index);
+  auto &cloud_sd = get_per_node_service_date(service_index, CLOUD_NODE_INDEX);
+  return (double) (cloud_sd.processing_time + 2 * cloud_sd.transmission_time) /
+         (cur_sd.processing_time + 2 * cur_sd.transmission_time);
+}
+
+double cal_speedup_avg_helper(int service_index) {
+  double speedup_sum = 0.0;
+  for (int i = 0; i < mapped_node_nums; i++) {
+    speedup_sum += cal_speedup_helper(service_index, i);
+  }
+  return speedup_sum / mapped_node_nums;
 }
 
 class Deployer {
 public:
   virtual void deployment() = 0;
-  virtual void clock_tick_handler() = 0;
+  virtual void clock_tick_handler(long long clock) = 0;
   virtual void new_task_handler(service& s, int t) = 0;
   virtual void task_process_handler(service& s, long long running_time) = 0;
 };

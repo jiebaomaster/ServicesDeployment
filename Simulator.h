@@ -15,10 +15,10 @@ public:
 
   // 计算一帧的平均资源利用率
   void cal_resource_utilization(long long current_time) {
-    std::vector<double> per_node_real_resource_utilization(CLOUD_NODE_INDEX);
-    std::vector<double> per_node_expected_resource_utilization(CLOUD_NODE_INDEX);
-    for (int i = 0; i < CLOUD_NODE_INDEX; i++) {
-      // expected_resource_utilization = remain/total
+    std::vector<double> per_node_real_resource_utilization(EDGE_NODE_NUMS);
+    std::vector<double> per_node_expected_resource_utilization(EDGE_NODE_NUMS);
+    for (int i = 0; i < EDGE_NODE_NUMS; i++) {
+      // expected_resource_utilization = 1 - remain/total
       if (nodes[i].deploy_service.empty()) {
         per_node_expected_resource_utilization[i] = 0;
         per_node_real_resource_utilization[i] = 0;
@@ -44,22 +44,31 @@ public:
     }
     expected_resource_utilization.push_back(std::accumulate(per_node_expected_resource_utilization.begin(),
                                                             per_node_expected_resource_utilization.end(), 0.0) /
-                                            CLOUD_NODE_INDEX);
+                                            EDGE_NODE_NUMS);
     real_resource_utilization.push_back(std::accumulate(per_node_real_resource_utilization.begin(),
                                                         per_node_real_resource_utilization.end(), 0.0) /
-                                        CLOUD_NODE_INDEX);
+                                                EDGE_NODE_NUMS);
   }
 
 // 对模拟结果的分析
-  void analysis(std::vector<double> &avg_wait_time_table, std::vector<double> &avg_real_resource_utilization_table) {
+  void analysis(std::vector<double> &avg_wait_time_table, std::vector<double> &avg_real_resource_utilization_table,
+                std::vector<double> &benefitRate_table, std::vector<double> &victimRate_table) {
     long long wait_time_sum = 0.0;
+    int benefitCnt = 0;
+    int victimCnt = 0;
     // 平均任务响应时间
-    for (auto &t: tasks) {
-      if (!t.is_transmission_task) {
-        wait_time_sum += t.respond_time - t.request_time;
-      }
+    for (int i = 0; i < TASK_NUMS; i++) {
+      wait_time_sum += tasks[i].respond_time - tasks[i].request_time;
+
+      if (tasks[i].process_node == CLOUD_NODE_INDEX) continue;
+      auto cloud_sd = get_per_node_service_date(tasks[i].task_type, CLOUD_NODE_INDEX);
+      if (tasks[i].respond_time - tasks[i].request_time < (cloud_sd.processing_time + 2 * cloud_sd.transmission_time))
+        benefitCnt++;
+      else victimCnt++;
     }
 
+    auto benefitRate = (double)benefitCnt / TASK_NUMS;
+    auto victimRate = (double)victimCnt / TASK_NUMS;
     auto avg_wait_time = (double) wait_time_sum / TASK_NUMS;
     auto avg_expected_resource_utilization =
             std::accumulate(expected_resource_utilization.begin(), expected_resource_utilization.end(), 0.0) /
@@ -70,9 +79,12 @@ public:
 
     avg_wait_time_table.push_back(avg_wait_time);
     avg_real_resource_utilization_table.push_back(avg_real_resource_utilization);
+    benefitRate_table.push_back(benefitRate);
+    victimRate_table.push_back(victimRate);
 
     std::cout << avg_wait_time << " "
               << avg_expected_resource_utilization << "/" << avg_real_resource_utilization << " "
+              << benefitRate << "/" << victimRate << " "
               << total_time << std::endl;
   }
 
@@ -80,16 +92,16 @@ public:
     total_time = 0;
     expected_resource_utilization.clear();
     real_resource_utilization.clear();
-
     int t = 0; // 任务遍历标记
-    for (long long clock = CLOCK_TICK;; clock += CLOCK_TICK) { // 10ms 一次，计算整个时间线上任务处理情况
+    for (long long clock = CLOCK_TICK;; clock += CLOCK_TICK) { // CLOCK_TICKms 一次，计算整个时间线上任务处理情况
 //      std::cout << "clock: " << clock << std::endl;
 
       bool has_remain_task = t < TASK_NUMS; // 标记是否还有任务需要处理
 
       // 1. 更新衰减负载，所有任务都衰减一次
       //      load_update_all();
-      deployer.clock_tick_handler();
+      if (use_adjust)
+        deployer.clock_tick_handler(clock);
       // 2. 处理这一个帧内的所有新到达的任务
       for (; t < TASK_NUMS && tasks[t].request_time < clock; t++) {
         service &s = services[tasks[t].task_type];
@@ -124,6 +136,7 @@ public:
           if (cur_task.processing_time >= clock)
             break;
 
+          cur_task.process_node = s.node_index;
           cur_task.complete_time = cur_task.processing_time +
                                    get_per_node_service_date(s.task_type, s.node_index).processing_time;
           cur_task.respond_time =
@@ -133,7 +146,8 @@ public:
                   std::min(clock, cur_task.complete_time) - std::max(cur_task.processing_time, clock - CLOCK_TICK);
           // 更新运行这个任务贡献的负载
 //          load_update_single(s, running_time);
-          deployer.task_process_handler(s, running_time);
+          if (use_adjust)
+            deployer.task_process_handler(s, running_time);
 
           // 本次任务处理超过了这一帧，不用继续遍历等待队列了
           if (cur_task.complete_time >= clock) {

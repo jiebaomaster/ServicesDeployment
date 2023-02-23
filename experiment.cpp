@@ -38,7 +38,7 @@ void initNodes() {
 }
 
 void initServices() {
-  // todo 初始化各服务的性能指标，实际有 7 种类型
+  // todo 初始化各服务的性能指标，实际有 8 种类型
   service_statistics = {
 //          { // googlenet
 //                  .initial_weight = 1,
@@ -99,61 +99,61 @@ void initServices() {
 //                          }
 //                  }
 //          },
-//          { // yolov5s-onnx 全 cpu
-//                  .initial_weight = 1,
-//                  .per_node_service_date = {
-//                          { // pi3 ❎
-//                                  INT32_MAX, 431, 12678,
-//                                  {INT32_MAX, 0, 0},
-//                                  {INT32_MAX, 0,  0},
-//                          },
-//                          { // pi4b ✅
-//                                  3350, 431, 1490,
-//                                  {0, 0, 2},
-//                                  {200, 0, 3},
-//                          },
-//                          { // jetson nano ✅
-//                                  1878, 431, 1092,
-//                                  {0, 0, 4},
-//                                  {143, 0, 5},
-//                          },
-//                          { // xavier nx ✅
-//                                  2261, 431, 1751,
-//                                  {0, 0, 2},
-//                                  {77, 0, 2},
-//                          },
-//                          { // cloud ✅
-//                                  660,  2420, 563,
-//                                  {0, 0, 1},
-//                                  {15, 0, 2},
-//                          }
-//                  }
-//          },
-          { // mobileNet_tf_lite
+          { // yolov5s-onnx 全 cpu
+                  .initial_weight = 1,
+                  .per_node_service_date = {
+                          { // pi3 ❎
+                                  INT32_MAX, 431,  12678,
+                                  {INT32_MAX, 0, 0},
+                                  {INT32_MAX, 0, 0},
+                          },
+                          { // pi4b ✅
+                                  3350,      431,  1490,
+                                  {0,         0, 2},
+                                  {200,       0, 3},
+                          },
+                          { // jetson nano ✅
+                                  1878,      431,  1092,
+                                  {0,         0, 4},
+                                  {143,       0, 5},
+                          },
+                          { // xavier nx ✅
+                                  2261,      431,  1751,
+                                  {0,         0, 2},
+                                  {77,        0, 2},
+                          },
+                          { // cloud ✅
+                                  660,       2420, 563,
+                                  {0,         0, 1},
+                                  {15,        0, 2},
+                          }
+                  }
+          },
+          { // mobileNet_tf_lite 全cpu
                   .initial_weight = 1,
                   .per_node_service_date = {
                           { // pi3
-                                  303, 431,  3500,
+                                  303, 431,  13680,
                                   {0, 0, 5},
                                   {27, 0, 10},
                           },
                           { // pi4b
-                                  145, 431,  3500,
+                                  145, 431,  7602,
                                   {0, 0, 2},
                                   {30, 0, 8},
                           },
                           { // jetson nano
-                                  153, 431,  3500,
+                                  153, 431,  3850,
                                   {0, 0, 2},
                                   {31, 0, 5},
                           },
                           { // xavier nx
-                                  214, 431,  3500,
+                                  214, 431,  4488,
                                   {0, 0, 1},
                                   {24, 0, 3},
                           },
                           { // cloud
-                                  120, 2420, 3500,
+                                  120, 2420, 2207,
                                   {0, 0, 0},
                                   {0,  0, 0},
                           }
@@ -167,22 +167,22 @@ void initServices() {
                                   {INT32_MAX, 0,  0}
                           },
                           { // pi4b
-                                  971,       300,  7000,
+                                  971,       300,  10950,
                                   {0,         0, 25},
                                   {25,        0,  37},
                           },
                           { // jetson nano
-                                  37,        300,  7000,
+                                  37,        300,  6742,
                                   {0,         0, 40},
                                   {29,        91, 63},
                           },
                           { // xavier nx
-                                  29,        300,  7000,
+                                  29,        300,  5530,
                                   {0,         0, 30},
                                   {29,        83, 70},
                           },
                           { // cloud
-                                  33,        2420, 7000,
+                                  33,        2420, 4378,
                                   {0,         0, 0},
                                   {0,         0,  0},
                           }
@@ -196,24 +196,24 @@ void initServices() {
                                   {INT32_MAX, 0,  0}
                           },
                           { // pi4b
-                                  5000,      431,  7000,
+                                  5000,      431,  9750,
                                   {0,         0, 40},
                                   {25,        0,  47},
                           },
                           { // jetson nano
-                                  43,        431,  7000,
+                                  43,        431,  7763,
                                   {0,         0, 50},
                                   {27,        83, 56},
                           },
                           { // xavier nx
-                                  29,        431,  615,
+                                  29,        431,  5604,
                                   {0,         0, 70},
                                   {32,        89, 73},
                           },
                           { // cloud
-                                  283,       2420, 1916,
+                                  22,        2420, 1916,
                                   {0,         0, 0},
-                                  {80,        0,  4},
+                                  {0,         0,  0},
                           }
                   }},
           {// UNetSegmentation
@@ -225,22 +225,22 @@ void initServices() {
                                   {INT32_MAX, 0,  0},
                           },
                           { // pi4b
-                                  588,       431,  7000,
+                                  588,       431,  14608,
                                   {0,         0, 89},
                                   {95,        0,  89},
                           },
                           { // jetson nano
-                                  89,        431,  7000,
+                                  89,        431,  4855,
                                   {0,         0, 55},
                                   {43,        88, 62},
                           },
                           { // xavier nx
-                                  18,        431,  7000,
+                                  18,        431,  6073,
                                   {0,         0, 50},
                                   {49,        97, 69},
                           },
                           { // cloud
-                                  10,        2420, 3500,
+                                  10,        2420, 2152,
                                   {0,         0, 0},
                                   {0,         0,  0},
                           }
@@ -259,17 +259,17 @@ void initServices() {
                                   {INT32_MAX, 0,  0},
                           },
                           { // jetson nano
-                                  56,        431,  7000,
+                                  56,        431,  7602,
                                   {0,         0, 60},
                                   {36,        83, 65},
                           },
                           { // xavier nx
-                                  133,       431,  7000,
+                                  133,       431,  5630,
                                   {0,         0, 55},
                                   {50,        99, 76},
                           },
                           { // cloud
-                                  45,        2420, 6000,
+                                  45,        2420, 2407,
                                   {0,         0, 0},
                                   {0,         0,  0},
                           }
@@ -298,7 +298,7 @@ void initServices() {
                                   {55, 0, 7},
                           },
                           { // cloud
-                                  1, 50, 845,
+                                  1, 50, 453,
                                   {0, 0, 0},
                                   {0,  0, 0},
                           }
@@ -327,12 +327,16 @@ void initServices() {
                                   {114, 0, 2},
                           },
                           { // cloud
-                                  10, 1015, 701,
+                                  10, 1015, 405,
                                   {0, 0, 0},
-                                  {0, 0, 0},
+                                  {0,   0, 0},
                           }
                   }}
   };
+
+  for (int i = 0; i < mapped_task_nums; i++) {
+    service_statistics[i].initial_weight = cal_speedup_avg_helper(i);
+  }
 
   // TASK_CATEGORY_NUMS 种服务，每种服务都对应一种任务类型 TO_MAPPED_TASK_TYPE(i)
   for (int i = 0; i < TASK_CATEGORY_NUMS; i++) {
@@ -365,21 +369,27 @@ void initTasks() {
 
   }
 
-  vector<int> task_times(TASK_CATEGORY_NUMS);
-  for (int i = 0; i < TASK_NUMS; i++) {
-    task_times[tasks[i].task_type]++;
+//  vector<int> task_times(TASK_CATEGORY_NUMS);
+//  vector<int> task_mapped_times(mapped_task_nums);
+//  for (int i = 0; i < TASK_NUMS; i++) {
+//    task_times[tasks[i].task_type]++;
+//    task_mapped_times[TO_MAPPED_TASK_TYPE(tasks[i].task_type)]++;
 //    cout << "<" << tasks[i].task_type << ", " << tasks[i].request_time << "> ";
-  }
+//  }
 //  cout << endl;
-  for (auto t: task_times) {
+//  for (auto t: task_times) {
 //    cout << t << ", ";
-  }
+//  }
+//  for (auto t: task_mapped_times) {
+//    cout << t << ", ";
+//  }
 //  cout << endl;
 }
 
 // 进行一轮所有算法的模拟
 void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
-                       vector<vector<double>> &avg_real_resource_utilization_table) {
+                       vector<vector<double>> &avg_real_resource_utilization_table,
+                       vector<vector<double>> &benefitRate_table, vector<vector<double>> &victimRate_table) {
   auto s = new Simulator();
 
   nodes.clear();
@@ -397,7 +407,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   PdDeployer d;
   d.deployment();
   s->run(d, true);
-  s->analysis(avg_wait_time_table[0], avg_real_resource_utilization_table[0]);
+  s->analysis(avg_wait_time_table[0], avg_real_resource_utilization_table[0], benefitRate_table[0], victimRate_table[0]);
 
   // swarm spread unadaptive
   cout << "su ";
@@ -406,7 +416,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   nodes = nodes_back;
   d.deployment_swarm_spread();
   s->run(d, false);
-  s->analysis(avg_wait_time_table[1], avg_real_resource_utilization_table[1]);
+  s->analysis(avg_wait_time_table[1], avg_real_resource_utilization_table[1], benefitRate_table[1], victimRate_table[1]);
 
   // swarm spread adaptive
   cout << "sa ";
@@ -415,7 +425,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   nodes = nodes_back;
   d.deployment_swarm_spread();
   s->run(d, true);
-  s->analysis(avg_wait_time_table[2], avg_real_resource_utilization_table[2]);
+  s->analysis(avg_wait_time_table[2], avg_real_resource_utilization_table[2], benefitRate_table[2], victimRate_table[2]);
 
   // k8s unadaptive
   cout << "ku ";
@@ -424,7 +434,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   nodes = nodes_back;
   d.deployment_k8s_NodeResourcesBalancedAllocation();
   s->run(d, false);
-  s->analysis(avg_wait_time_table[3], avg_real_resource_utilization_table[3]);
+  s->analysis(avg_wait_time_table[3], avg_real_resource_utilization_table[3], benefitRate_table[3], victimRate_table[3]);
 
   // k8s adaptive
   cout << "ka ";
@@ -433,7 +443,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   nodes = nodes_back;
   d.deployment_k8s_NodeResourcesBalancedAllocation();
   s->run(d, true);
-  s->analysis(avg_wait_time_table[4], avg_real_resource_utilization_table[4]);
+  s->analysis(avg_wait_time_table[4], avg_real_resource_utilization_table[4], benefitRate_table[4], victimRate_table[4]);
 }
 
 // 重置全局参数
@@ -443,25 +453,56 @@ void param_reset() {
 // 生成任务序列的参数
   exponential_distribution_lambda = 3; // 任务时间间隔，指数分布
   normal_distribution_mean = TASK_CATEGORY_NUMS / 2.0; // 任务类型，正态分布均值
-  normal_distribution_stddev = TASK_CATEGORY_NUMS / 7.0; // 任务类型，正态分布方差
+  normal_distribution_stddev = 10; // 任务类型，正态分布方差
 }
 
 // 按算法名称归类显示数据
 void
-show_result(vector<vector<double>> &avg_wait_time_table, vector<vector<double>> &avg_real_resource_utilization_table) {
+show_result(vector<vector<double>> &avg_wait_time_table, vector<vector<double>> &avg_real_resource_utilization_table,
+            vector<vector<double>> &benefitRate_table, vector<vector<double>> &victimRate_table) {
   vector<string> name{"pd", "su", "sa", "ku", "ka"};
   cout << "name\tavg_wait_time" << endl;
   for (int i = 0; i < 5; i++) {
-    cout << name[i] << "\t";
-    for (auto t: avg_wait_time_table[i])
-      cout << t << ", ";
+    cout << name[i] << "\t[";
+    for (int j = 0; j < avg_wait_time_table[i].size(); j++) {
+      if (j == avg_wait_time_table[i].size() - 1)
+        cout << avg_wait_time_table[i][j] << ']';
+      else
+        cout << avg_wait_time_table[i][j] << ", ";
+    }
     cout << endl;
   }
   cout << "name\tavg_real_resource_utilization" << endl;
   for (int i = 0; i < 5; i++) {
-    cout << name[i] << "\t";
-    for (auto t: avg_real_resource_utilization_table[i])
-      cout << t << ", ";
+    cout << name[i] << "\t[";
+    for (int j = 0; j < avg_real_resource_utilization_table[i].size(); j++) {
+      if (j == avg_real_resource_utilization_table[i].size() - 1)
+        cout << avg_real_resource_utilization_table[i][j] << ']';
+      else
+        cout << avg_real_resource_utilization_table[i][j] << ", ";
+    }
+    cout << endl;
+  }
+  cout << "name\tbenefitRate" << endl;
+  for (int i = 0; i < 5; i++) {
+    cout << name[i] << "\t[";
+    for (int j = 0; j < benefitRate_table[i].size(); j++) {
+      if (j == benefitRate_table[i].size() - 1)
+        cout << benefitRate_table[i][j] << ']';
+      else
+        cout << benefitRate_table[i][j] << ", ";
+    }
+    cout << endl;
+  }
+  cout << "name\tvictimRate" << endl;
+  for (int i = 0; i < 5; i++) {
+    cout << name[i] << "\t[";
+    for (int j = 0; j < victimRate_table[i].size(); j++) {
+      if (j == victimRate_table[i].size() - 1)
+        cout << victimRate_table[i][j] << ']';
+      else
+        cout << victimRate_table[i][j] << ", ";
+    }
     cout << endl;
   }
 }
@@ -471,12 +512,23 @@ void test_exponential_distribution_lambda() {
   param_reset();
   vector<vector<double>> avg_wait_time_table(5);
   vector<vector<double>> avg_real_resource_utilization_table(5);
-  for (exponential_distribution_lambda = 1;
-       exponential_distribution_lambda < 16; exponential_distribution_lambda += 1) {
+  vector<vector<double>> benefitRate_table(5);
+  vector<vector<double>> victimRate_table(5);
+  double begin = 2;
+  double end = 20;
+  double step = 0.5;
+  for (exponential_distribution_lambda = begin;
+       exponential_distribution_lambda < end; exponential_distribution_lambda += step) {
     cout << ">>>>> exponential_distribution_lambda = " << exponential_distribution_lambda << endl;
-    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table);
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
   }
-  show_result(avg_wait_time_table, avg_real_resource_utilization_table);
+  cout << '[';
+  for (double i = begin; i < end; i += step) {
+    if (i == end - step) cout << i << ']';
+    else cout << i << ", ";
+  }
+  cout << endl;
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
 }
 
 // 指标随边缘节点个数变化
@@ -484,12 +536,24 @@ void test_EDGE_NODE_NUMS() {
   param_reset();
   vector<vector<double>> avg_wait_time_table(5);
   vector<vector<double>> avg_real_resource_utilization_table(5);
-  for (EDGE_NODE_NUMS = mapped_node_nums; EDGE_NODE_NUMS < mapped_node_nums * 16; EDGE_NODE_NUMS += mapped_node_nums) {
+  vector<vector<double>> benefitRate_table(5);
+  vector<vector<double>> victimRate_table(5);
+  double begin = mapped_node_nums * 2;
+  double end = mapped_node_nums * 50;
+  double step = mapped_node_nums * 2;
+  for (EDGE_NODE_NUMS = begin;
+       EDGE_NODE_NUMS < end; EDGE_NODE_NUMS += step) {
     cout << ">>>>> EDGE_NODE_NUMS = " << EDGE_NODE_NUMS << endl;
     CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
-    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table);
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
   }
-  show_result(avg_wait_time_table, avg_real_resource_utilization_table);
+  cout << '[';
+  for (double i = begin; i < end; i += step) {
+    if (i == end - step) cout << i << ']';
+    else cout << i << ", ";
+  }
+  cout << endl;
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
 }
 
 // 指标随任务类型聚集程度变化
@@ -497,11 +561,22 @@ void test_normal_distribution_stddev() {
   param_reset();
   vector<vector<double>> avg_wait_time_table(5);
   vector<vector<double>> avg_real_resource_utilization_table(5);
-  for (normal_distribution_stddev = 2; normal_distribution_stddev < 32; normal_distribution_stddev += 2) {
+  vector<vector<double>> benefitRate_table(5);
+  vector<vector<double>> victimRate_table(5);
+  double begin = 4;
+  double end = 50;
+  double step = 2;
+  for (normal_distribution_stddev = begin; normal_distribution_stddev < end; normal_distribution_stddev += step) {
     cout << ">>>>> normal_distribution_stddev = " << normal_distribution_stddev << endl;
-    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table);
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
   }
-  show_result(avg_wait_time_table, avg_real_resource_utilization_table);
+  cout << '[';
+  for (double i = begin; i < end; i += step) {
+    if (i == end - step) cout << i << ']';
+    else cout << i << ", ";
+  }
+  cout << endl;
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
 }
 
 int main() {
