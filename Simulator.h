@@ -9,23 +9,30 @@
 
 class Simulator {
   long long total_time; // 系统处理完所有任务花费的时间
-  std::vector<double> real_resource_utilization; // 平均实际资源利用率
-  std::vector<double> expected_resource_utilization; // 平均期望资源利用率
-public:
+  std::vector<std::vector<double>> real_resource_utilization_trace; // 每一帧的各容器的实际资源利用率 {{n0},{n1},{n2},{n3},{avg}}
+  std::vector<std::vector<double>> expected_resource_utilization_trace; // 每一帧的各容器的期望资源利用率 {{n0},{n1},{n2},{n3},{avg}}
+  void reset() {
+    total_time = 0;
+    expected_resource_utilization_trace.clear();
+    expected_resource_utilization_trace.resize(mapped_node_nums + 1);
+    real_resource_utilization_trace.clear();
+    real_resource_utilization_trace.resize(mapped_node_nums + 1);
+  }
 
   // 计算一帧的平均资源利用率
   void cal_resource_utilization(long long current_time) {
-    std::vector<double> per_node_real_resource_utilization(EDGE_NODE_NUMS);
-    std::vector<double> per_node_expected_resource_utilization(EDGE_NODE_NUMS);
+    std::vector<std::vector<double>> per_node_real_resource_utilization(mapped_node_nums + 1,
+                                                                        std::vector<double>(EDGE_NODE_NUMS));
+    std::vector<std::vector<double>> per_node_expected_resource_utilization(mapped_node_nums + 1,
+                                                                            std::vector<double>(EDGE_NODE_NUMS));
     for (int i = 0; i < EDGE_NODE_NUMS; i++) {
-      // expected_resource_utilization = 1 - remain/total
       if (nodes[i].deploy_service.empty()) {
-        per_node_expected_resource_utilization[i] = 0;
-        per_node_real_resource_utilization[i] = 0;
         continue;
       }
-
-      per_node_expected_resource_utilization[i] = 1.0 - cal_resource_utilization_helper(nodes[i].remain_source, i);
+      // expected_resource_utilization = 1 - remain/total
+      auto expected_resource_utilization = 1.0 - cal_resource_utilization_helper(nodes[i].remain_source, i);
+      per_node_expected_resource_utilization[TO_MAPPED_NODE_TYPE(i)].push_back(expected_resource_utilization);
+      per_node_expected_resource_utilization[mapped_node_nums].push_back(expected_resource_utilization);
 
       source_categories real_sc{0, 0, 0};
       for (auto s: nodes[i].deploy_service) {
@@ -40,18 +47,33 @@ public:
           real_sc.gpu += get_per_node_service_date(s, i).busy_source.gpu;
         }
       }
-      per_node_real_resource_utilization[i] = cal_resource_utilization_helper(real_sc, i);
+      auto real_resource_utilization = cal_resource_utilization_helper(real_sc, i);
+      per_node_real_resource_utilization[TO_MAPPED_NODE_TYPE(i)].push_back(real_resource_utilization);
+      per_node_real_resource_utilization[mapped_node_nums].push_back(real_resource_utilization);
     }
-    expected_resource_utilization.push_back(std::accumulate(per_node_expected_resource_utilization.begin(),
-                                                            per_node_expected_resource_utilization.end(), 0.0) /
-                                            EDGE_NODE_NUMS);
-    real_resource_utilization.push_back(std::accumulate(per_node_real_resource_utilization.begin(),
-                                                        per_node_real_resource_utilization.end(), 0.0) /
-                                                EDGE_NODE_NUMS);
+    for (int i = 0; i < mapped_node_nums; i++) {
+      expected_resource_utilization_trace[i].push_back(
+              std::accumulate(per_node_expected_resource_utilization[i].begin(),
+                              per_node_expected_resource_utilization[i].end(), 0.0) /
+              (EDGE_NODE_NUMS / mapped_node_nums));
+      real_resource_utilization_trace[i].push_back(
+              std::accumulate(per_node_real_resource_utilization[i].begin(),
+                              per_node_real_resource_utilization[i].end(), 0.0) /
+              (EDGE_NODE_NUMS / mapped_node_nums));
+    }
+    expected_resource_utilization_trace[mapped_node_nums].push_back(
+            std::accumulate(per_node_expected_resource_utilization[mapped_node_nums].begin(),
+                            per_node_expected_resource_utilization[mapped_node_nums].end(), 0.0) /
+            EDGE_NODE_NUMS);
+    real_resource_utilization_trace[mapped_node_nums].push_back(
+            std::accumulate(per_node_real_resource_utilization[mapped_node_nums].begin(),
+                            per_node_real_resource_utilization[mapped_node_nums].end(), 0.0) /
+            EDGE_NODE_NUMS);
   }
 
+public:
 // 对模拟结果的分析
-  void analysis(std::vector<double> &avg_wait_time_table, std::vector<double> &avg_real_resource_utilization_table,
+  void analysis(std::vector<double> &avg_wait_time_table, std::vector<std::vector<double>> &avg_real_resource_utilization_table,
                 std::vector<double> &benefitRate_table, std::vector<double> &victimRate_table) {
     long long wait_time_sum = 0.0;
     int benefitCnt = 0;
@@ -67,31 +89,40 @@ public:
       else victimCnt++;
     }
 
-    auto benefitRate = (double)benefitCnt / TASK_NUMS;
-    auto victimRate = (double)victimCnt / TASK_NUMS;
+    auto benefitRate = (double) benefitCnt / TASK_NUMS;
+    auto victimRate = (double) victimCnt / TASK_NUMS;
     auto avg_wait_time = (double) wait_time_sum / TASK_NUMS;
-    auto avg_expected_resource_utilization =
-            std::accumulate(expected_resource_utilization.begin(), expected_resource_utilization.end(), 0.0) /
-            expected_resource_utilization.size();
-    auto avg_real_resource_utilization =
-            std::accumulate(real_resource_utilization.begin(), real_resource_utilization.end(), 0.0) /
-            real_resource_utilization.size();
+
+    std::vector<double> avg_expected_resource_utilization(mapped_node_nums + 1);
+    for (int i = 0; i <= mapped_node_nums; i++) {
+      avg_expected_resource_utilization[i] = std::accumulate(expected_resource_utilization_trace[i].begin(),
+                                                             expected_resource_utilization_trace[i].end(), 0.0) /
+                                             expected_resource_utilization_trace[0].size();
+    }
+    std::vector<double> avg_real_resource_utilization(mapped_node_nums + 1);
+    for (int i = 0; i <= mapped_node_nums; i++) {
+      avg_real_resource_utilization[i] =
+              std::accumulate(real_resource_utilization_trace[i].begin(), real_resource_utilization_trace[i].end(),
+                              0.0) /
+              real_resource_utilization_trace[0].size();
+    }
+
 
     avg_wait_time_table.push_back(avg_wait_time);
     avg_real_resource_utilization_table.push_back(avg_real_resource_utilization);
     benefitRate_table.push_back(benefitRate);
     victimRate_table.push_back(victimRate);
 
-    std::cout << avg_wait_time << " "
-              << avg_expected_resource_utilization << "/" << avg_real_resource_utilization << " "
-              << benefitRate << "/" << victimRate << " "
+    std::cout << avg_wait_time << " [";
+    for(int i = 0; i <= mapped_node_nums; i++) {
+      std::cout << avg_real_resource_utilization[i] << "/" << avg_expected_resource_utilization[i] << " ";
+    }
+    std::cout << "] " << benefitRate << "/" << victimRate << " "
               << total_time << std::endl;
   }
 
   void run(Deployer &deployer, bool use_adjust) {
-    total_time = 0;
-    expected_resource_utilization.clear();
-    real_resource_utilization.clear();
+    reset();
     int t = 0; // 任务遍历标记
     for (long long clock = CLOCK_TICK;; clock += CLOCK_TICK) { // CLOCK_TICKms 一次，计算整个时间线上任务处理情况
 //      std::cout << "clock: " << clock << std::endl;

@@ -374,6 +374,8 @@ void initTasks() {
 //  for (int i = 0; i < TASK_NUMS; i++) {
 //    task_times[tasks[i].task_type]++;
 //    task_mapped_times[TO_MAPPED_TASK_TYPE(tasks[i].task_type)]++;
+//    if(service_statistics[TO_MAPPED_TASK_TYPE(tasks[i].task_type)].initial_weight > 1.0)
+//      canSpeedupCnt++;
 //    cout << "<" << tasks[i].task_type << ", " << tasks[i].request_time << "> ";
 //  }
 //  cout << endl;
@@ -388,8 +390,10 @@ void initTasks() {
 
 // 进行一轮所有算法的模拟
 void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
-                       vector<vector<double>> &avg_real_resource_utilization_table,
-                       vector<vector<double>> &benefitRate_table, vector<vector<double>> &victimRate_table) {
+                       vector<vector<vector<double>>> &avg_real_resource_utilization_table,
+                       vector<vector<double>> &benefitRate_table,
+                       vector<vector<double>> &victimRate_table,
+                       vector<vector<vector<vector<int>>>> &migrate_table) {
   auto s = new Simulator();
 
   nodes.clear();
@@ -407,6 +411,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   PdDeployer d;
   d.deployment();
   s->run(d, true);
+  migrate_table[0].push_back(d.migrate_trace);
   s->analysis(avg_wait_time_table[0], avg_real_resource_utilization_table[0], benefitRate_table[0], victimRate_table[0]);
 
   // swarm spread unadaptive
@@ -425,6 +430,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   nodes = nodes_back;
   d.deployment_swarm_spread();
   s->run(d, true);
+  migrate_table[2].push_back(d.migrate_trace);
   s->analysis(avg_wait_time_table[2], avg_real_resource_utilization_table[2], benefitRate_table[2], victimRate_table[2]);
 
   // k8s unadaptive
@@ -443,6 +449,7 @@ void simulate_one_turn(vector<vector<double>> &avg_wait_time_table,
   nodes = nodes_back;
   d.deployment_k8s_NodeResourcesBalancedAllocation();
   s->run(d, true);
+  migrate_table[4].push_back(d.migrate_trace);
   s->analysis(avg_wait_time_table[4], avg_real_resource_utilization_table[4], benefitRate_table[4], victimRate_table[4]);
 }
 
@@ -456,71 +463,106 @@ void param_reset() {
   normal_distribution_stddev = 10; // 任务类型，正态分布方差
 }
 
+void _show_result(vector<vector<double>> &table, const string &s) {
+  vector<string> name{"pd", "su", "sa", "ku", "ka"};
+  cout << "name\t" << s << endl;
+  for (int i = 0; i < 5; i++) {
+    cout << name[i] << "\t[";
+    for (int j = 0; j < table[i].size(); j++) {
+      if (j == table[i].size() - 1)
+        cout << table[i][j] << ']';
+      else
+        cout << table[i][j] << ", ";
+    }
+    cout << endl;
+  }
+}
+
+void _show_result(vector<vector<vector<vector<int>>>> &migrate_table, const string &s) {
+  vector<string> name{"pd", "su", "sa", "ku", "ka"};
+  cout << "name\t" << s << endl;
+  for (int i = 0; i < 5; i += 2) {
+    vector<double> frs;
+
+    cout << name[i] << "\t[";
+    for (int j = 0; j < migrate_table[i].size(); j++) {
+      double failureRate = 0;
+
+      map<int, int> times;
+      int cnt = 0;
+      for (auto &trace: migrate_table[i][j]) {
+        times[trace[1]]++;
+        if (times[trace[1]] == 2) cnt += 2;
+        else if (times[trace[1]] > 2) cnt++;
+      }
+      failureRate = (double) cnt / migrate_table[i][j].size();
+      frs.push_back(failureRate);
+
+      if (j == migrate_table[i].size() - 1)
+        cout << migrate_table[i][j].size() << ']';
+      else
+        cout << migrate_table[i][j].size() << ", ";
+    }
+    cout << endl;
+    cout << name[i] << "\t[";
+    for (int j = 0; j < migrate_table[i].size(); j++) {
+      if (j == migrate_table[i].size() - 1)
+        cout << frs[j] << ']';
+      else
+        cout << frs[j] << ", ";
+    }
+    cout << endl;
+  }
+}
+
+
+// {{{n0,n1,n2,n3,avg}}}
+void _show_resource_utilization_table(vector<vector<vector<double>>> &resource_utilization_table) {
+  vector<string> name{"pd", "su", "sa", "ku", "ka"};
+  vector<string> tags{"n0", "n1", "n2", "n3", "avg"};
+  for(int i = 0; i <= mapped_node_nums; i++) {
+    cout << "name\tresource_utilization\t" << tags[i] << endl;
+    for(int j = 0; j < 5; j++) {
+      cout << name[j] << "\t[";
+      for(int k = 0; k < resource_utilization_table[0].size(); k++) {
+        if (k == resource_utilization_table[0].size() - 1)
+          cout << resource_utilization_table[j][k][i] << ']';
+        else
+          cout << resource_utilization_table[j][k][i] << ", ";
+      }
+      cout << endl;
+    }
+  }
+}
 // 按算法名称归类显示数据
 void
-show_result(vector<vector<double>> &avg_wait_time_table, vector<vector<double>> &avg_real_resource_utilization_table,
-            vector<vector<double>> &benefitRate_table, vector<vector<double>> &victimRate_table) {
-  vector<string> name{"pd", "su", "sa", "ku", "ka"};
-  cout << "name\tavg_wait_time" << endl;
-  for (int i = 0; i < 5; i++) {
-    cout << name[i] << "\t[";
-    for (int j = 0; j < avg_wait_time_table[i].size(); j++) {
-      if (j == avg_wait_time_table[i].size() - 1)
-        cout << avg_wait_time_table[i][j] << ']';
-      else
-        cout << avg_wait_time_table[i][j] << ", ";
-    }
-    cout << endl;
-  }
-  cout << "name\tavg_real_resource_utilization" << endl;
-  for (int i = 0; i < 5; i++) {
-    cout << name[i] << "\t[";
-    for (int j = 0; j < avg_real_resource_utilization_table[i].size(); j++) {
-      if (j == avg_real_resource_utilization_table[i].size() - 1)
-        cout << avg_real_resource_utilization_table[i][j] << ']';
-      else
-        cout << avg_real_resource_utilization_table[i][j] << ", ";
-    }
-    cout << endl;
-  }
-  cout << "name\tbenefitRate" << endl;
-  for (int i = 0; i < 5; i++) {
-    cout << name[i] << "\t[";
-    for (int j = 0; j < benefitRate_table[i].size(); j++) {
-      if (j == benefitRate_table[i].size() - 1)
-        cout << benefitRate_table[i][j] << ']';
-      else
-        cout << benefitRate_table[i][j] << ", ";
-    }
-    cout << endl;
-  }
-  cout << "name\tvictimRate" << endl;
-  for (int i = 0; i < 5; i++) {
-    cout << name[i] << "\t[";
-    for (int j = 0; j < victimRate_table[i].size(); j++) {
-      if (j == victimRate_table[i].size() - 1)
-        cout << victimRate_table[i][j] << ']';
-      else
-        cout << victimRate_table[i][j] << ", ";
-    }
-    cout << endl;
-  }
+show_result(vector<vector<double>> &avg_wait_time_table,
+            vector<vector<vector<double>>> &avg_real_resource_utilization_table,
+            vector<vector<double>> &benefitRate_table,
+            vector<vector<double>> &victimRate_table,
+            vector<vector<vector<vector<int>>>> &migrate_table) {
+  _show_result(avg_wait_time_table, "avg_wait_time");
+  _show_resource_utilization_table(avg_real_resource_utilization_table);
+  _show_result(benefitRate_table, "benefitRate");
+  _show_result(victimRate_table, "victimRate");
+  _show_result(migrate_table, "migrate time");
 }
 
 // 指标随任务密度变化
 void test_exponential_distribution_lambda() {
   param_reset();
   vector<vector<double>> avg_wait_time_table(5);
-  vector<vector<double>> avg_real_resource_utilization_table(5);
+  vector<vector<vector<double>>> avg_real_resource_utilization_table(5);
   vector<vector<double>> benefitRate_table(5);
   vector<vector<double>> victimRate_table(5);
+  vector<vector<vector<vector<int>>>> migrate_table(5);
   double begin = 2;
-  double end = 20;
+  double end = 16;
   double step = 0.5;
   for (exponential_distribution_lambda = begin;
        exponential_distribution_lambda < end; exponential_distribution_lambda += step) {
     cout << ">>>>> exponential_distribution_lambda = " << exponential_distribution_lambda << endl;
-    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table, migrate_table);
   }
   cout << '[';
   for (double i = begin; i < end; i += step) {
@@ -528,16 +570,18 @@ void test_exponential_distribution_lambda() {
     else cout << i << ", ";
   }
   cout << endl;
-  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table, migrate_table);
 }
 
 // 指标随边缘节点个数变化
 void test_EDGE_NODE_NUMS() {
   param_reset();
   vector<vector<double>> avg_wait_time_table(5);
-  vector<vector<double>> avg_real_resource_utilization_table(5);
+  vector<vector<vector<double>>> avg_real_resource_utilization_table(5);
   vector<vector<double>> benefitRate_table(5);
   vector<vector<double>> victimRate_table(5);
+  vector<vector<vector<vector<int>>>> migrate_table(5);
+
   double begin = mapped_node_nums * 2;
   double end = mapped_node_nums * 50;
   double step = mapped_node_nums * 2;
@@ -545,7 +589,7 @@ void test_EDGE_NODE_NUMS() {
        EDGE_NODE_NUMS < end; EDGE_NODE_NUMS += step) {
     cout << ">>>>> EDGE_NODE_NUMS = " << EDGE_NODE_NUMS << endl;
     CLOUD_NODE_INDEX = EDGE_NODE_NUMS; // cloud 服务器编号
-    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table, migrate_table);
   }
   cout << '[';
   for (double i = begin; i < end; i += step) {
@@ -553,22 +597,24 @@ void test_EDGE_NODE_NUMS() {
     else cout << i << ", ";
   }
   cout << endl;
-  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table, migrate_table);
 }
 
 // 指标随任务类型聚集程度变化
 void test_normal_distribution_stddev() {
   param_reset();
   vector<vector<double>> avg_wait_time_table(5);
-  vector<vector<double>> avg_real_resource_utilization_table(5);
+  vector<vector<vector<double>>> avg_real_resource_utilization_table(5);
   vector<vector<double>> benefitRate_table(5);
   vector<vector<double>> victimRate_table(5);
-  double begin = 4;
-  double end = 50;
+  vector<vector<vector<vector<int>>>> migrate_table(5);
+
+  double begin = 10;
+  double end = 44;
   double step = 2;
   for (normal_distribution_stddev = begin; normal_distribution_stddev < end; normal_distribution_stddev += step) {
     cout << ">>>>> normal_distribution_stddev = " << normal_distribution_stddev << endl;
-    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
+    simulate_one_turn(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table, migrate_table);
   }
   cout << '[';
   for (double i = begin; i < end; i += step) {
@@ -576,7 +622,7 @@ void test_normal_distribution_stddev() {
     else cout << i << ", ";
   }
   cout << endl;
-  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table);
+  show_result(avg_wait_time_table, avg_real_resource_utilization_table, benefitRate_table, victimRate_table, migrate_table);
 }
 
 int main() {

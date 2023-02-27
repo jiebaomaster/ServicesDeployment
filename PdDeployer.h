@@ -9,8 +9,16 @@
 #include <cmath>
 
 class PdDeployer : public Deployer {
+private:
   double y = 0.97857206; // 衰减因子
   std::multimap<double, int> weight2serviceIndex; // 加速比权重树，所有服务
+public:
+  std::vector<std::vector<int>> migrate_trace; // 容器迁移轨迹 {task，service, from to}
+private:
+  void clear() {
+    weight2serviceIndex.clear();
+    migrate_trace.clear();
+  }
 
   // 初始化将服务 s 部署到节点 n 的负载
   void load_init(int s, int n) {
@@ -50,6 +58,8 @@ class PdDeployer : public Deployer {
    * @param to
    */
   void _do_migrate(long long time, int service_index, int from, int to) {
+    migrate_trace.push_back({(int)time, service_index, from, to});
+
     // 迁出
     chancelDeploy(get_source_categories(service_index, from), nodes[from]);
     nodes[from].deploy_service.remove(service_index);
@@ -72,7 +82,7 @@ class PdDeployer : public Deployer {
 
   // 任务 t 导致服务 s 从 from 节点迁移到 to 节点
   void do_migrate_for_task(int t, int service_index, int from, int to) {
-    //    std::cout << "for task " << t << " migrate " << service_index << " from " << from << " to " << to << std::endl;
+    // std::cout << "for task " << t << " migrate " << service_index << " from " << from << " to " << to << std::endl;
     _do_migrate(tasks[t].request_time, service_index, from, to);
   }
 
@@ -153,7 +163,7 @@ class PdDeployer : public Deployer {
 
 public:
   void deployment() override {
-    weight2serviceIndex.clear();
+    clear();
     // 将 service 按平均加速比从大到小排序
     std::vector<int> service_index(TASK_CATEGORY_NUMS);
     for(int i = 0; i < TASK_CATEGORY_NUMS; i++)
@@ -195,7 +205,7 @@ public:
   * 如果节点配置相同，选择一个正在运行的容器数量最少的那个节点，即尽量平摊容器到各个节点
   */
   void deployment_swarm_spread() {
-    weight2serviceIndex.clear();
+    clear();
     for (int s = 0; s < TASK_CATEGORY_NUMS; s++) {
       int targetNode = -1;
       for (int i = 0; i <= EDGE_NODE_NUMS; ++i) { // 最后一个节点是 cloud 兜底
@@ -217,7 +227,7 @@ public:
   }
 
   void deployment_k8s_NodeResourcesBalancedAllocation() {
-    weight2serviceIndex.clear();
+    clear();
     for (int s = 0; s < TASK_CATEGORY_NUMS; s++) {
       int targetNode = -1;
       double min_score = 1.0;
