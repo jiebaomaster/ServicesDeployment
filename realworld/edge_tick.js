@@ -49,22 +49,52 @@ const step = 3000
 setInterval(() => {
   getMemUsage()
   getCPUUsage()
-  console.log(source_usage)
+  // console.log(source_usage)
 }, step)
 
 let app = express();
 app.get('/tick/',  (req, res) => {
-  // console.log(source_usage)
+  console.log(Date.now(), source_usage)
   res.send(JSON.stringify(source_usage));
 })
 
-// 执行 ES 任务
-app.get('/run', (req, res) => {
-  shell.exec("ls");
+// 执行 BE 任务
+// todo BE 任务需要预先编译，需要调整运行类别
+app.get('/run/:percent', (req, res) => {
+  let total = Math.floor(Math.random()*10+1)
+  for (let i = 0; i < os.cpus().length; i++) {
+    shell.exec(`/home/jbmaster/Desktop/ServicesDeployment/realworld/be ${req.params.percent} ${total}`, {async:true});
+    // shell.exec(`nice -n -19 /home/jbmaster/Desktop/ServicesDeployment/realworld/be ${req.params.percent} ${total}`, {async:true});
+  }
   res.send()
 })
 
-let server = app.listen(3000, function () {
+// 部署 LS 服务
+app.post('/deploy/', (req, res) => {
+  let s = undefined
+  switch (req.body.type) {
+    case "redis":
+      s = shell.exec(`sudo docker run -itd --rm -p ${req.body.port}:6379 -v ~/Desktop/redis.conf:/etc/redis/redis.conf redis`, (code, stdout, stderr) => {
+        console.log('redis, Exit code:', code);
+      })
+      break
+    case "http":
+      s = shell.exec("node http_worker.js " + req.body.port, (code, stdout, stderr) => {
+        console.log('http, Exit code:', code);
+      })
+      break
+    case "yolov5":
+      s = shell.exec(`sudo docker run -itd --rm -p ${req.body.port}:8080 es_server:3`, (code, stdout, stderr) => {
+        console.log('yolov5, Exit code:', code);
+      })
+      break
+    default:
+      console.error("deploy wrong service!")
+  }
+})
+
+const port = 3000
+let server = app.listen(port, function () {
   let host = server.address().address
   let port = server.address().port
 

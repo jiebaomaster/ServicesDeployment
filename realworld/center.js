@@ -1,104 +1,64 @@
 import axios from 'axios'
+import {BE_tasks, LS_tasks} from './tasks'
+import {BE_services, LS_services, nodes, redis_cli, LS_type} from "./services"
 
-let BE_services = [
-  {
-    url: "",
-    usage: [{
-      cpu: 0.2,
-      mem: 0.1,
-    }, {
-      cpu: 0.3,
-      mem: 0.1,
-    }, {
-      cpu: 0.4,
-      mem: 0.1,
-    }
-    ]
-  }, {}
-]
+const fs = require('fs')
 
-let LS_services = [
-  {
-    url: ""
-  }
-]
+let options = {
+  flags: 'w', //
+  encoding: 'utf8', // utf8编码
+}
+let data = Date.now()
+let tickLoggerFile = fs.createWriteStream('./log/tick_' + data + '.log', options)
+let tickLogger = new console.Console(tickLoggerFile)
+let taskLoggerFile = fs.createWriteStream('./log/task_' + data + '.log', options)
+let taskLogger = new console.Console(taskLoggerFile)
 
-let nodes = [
-  {
-    url: "192.168.3.3",
-    cur_usage: { // 当前资源使用率
-      cpu: 0,
-      mem: 0,
-    },
-    avg_usage: { // 时间衰减资源使用率
-      cpu: 0,
-      mem: 0,
-    },
-    max_usage: { // 历史资源使用率峰值
-      cpu: 0,
-      men: 0,
-    },
-  }, {
-    url: "192.168.2.50",
-    cur_usage: { // 当前资源使用率
-      cpu: 0,
-      mem: 0,
-    },
-    avg_usage: { // 时间衰减资源使用率
-      cpu: 0,
-      mem: 0,
-    },
-    max_usage: { // 历史资源使用率峰值
-      cpu: 0,
-      men: 0,
-    },
-  }, {
-    url: "192.168.2.98",
-    cur_usage: { // 当前资源使用率
-      cpu: 0,
-      mem: 0,
-    },
-    avg_usage: { // 历史衰减资源使用率
-      cpu: 0,
-      mem: 0,
-    },
-    max_usage: { // 历史资源使用率峰值
-      cpu: 0,
-      men: 0,
-    },
-  }
-]
+function dump_usage() {
+  tickLogger.log('-------', Date.now(), '--------')
+  nodes.forEach((n, i) => {
+    let c = []
+    let c_sum = 0
+    let m = []
+    let m_sum = 0
+    n.history_usage.forEach(u => {
+      c.push(u.cpu)
+      c_sum += u.cpu
+      m.push(u.mem)
+      m_sum += u.mem
+    })
+    tickLogger.log('n' + i + ' cpu: ', c)
+    tickLogger.log('n' + i + ' mem: ', m)
+    tickLogger.log('avg_cpu_usage: ', c_sum / c.length)
+    tickLogger.log('avg_mem_usage: ', m_sum / m.length)
+  })
+}
 
-let LS_tasks = [
-  {
-    type: 0, // 任务类型
-    arrive_time: 0, // 到达时间
-    response_time: 0, // 请求返回时间
-  }
-]
-
-let BE_tasks = [
-  {
-    type: 0, // 任务类型
-    arrive_time: 0, // 到达时间
-  }
-]
-
-// 任务结束后进行数据分析
-let analysis = () => {
+function dump_task() {
+  let delay = []
   let sum_delay = 0
   LS_tasks.forEach(t => {
+    delay.push(t.response_time - t.arrive_time)
     sum_delay += t.response_time - t.arrive_time
   })
   let avg_delay = sum_delay / LS_tasks.length
+  taskLogger.log(delay)
+  taskLogger.log('avg_delay: ' + avg_delay)
+}
+
+// 任务结束后进行数据分析
+let analysis = () => {
+  dump_usage()
+  dump_task()
 }
 
 // 负载衰减系数
 const y = 0.1
+let dumpCnt = 0
 // 定时获取集群资源利用率
 let source_tick_interval = setInterval(() => {
   nodes.forEach((n) => {
-    axios.get(n.url).then(r => {
+    axios.get(n.url + ':3000/tick/').then(r => {
       // 更新 实际资源使用情况
       n.cur_usage = JSON.parse(r.data)
 
@@ -109,15 +69,21 @@ let source_tick_interval = setInterval(() => {
       n.avg_usage.mem = n.avg_usage.mem * y + n.cur_usage.mem
     })
   })
-}, 3000)
+  // 每个 5 秒打印一次资源使用记录
+  dumpCnt++
+  if (dumpCnt === 5) {
+    dumpCnt = 0
+    dump_usage()
+  }
+}, 1000)
 
 let checkDeploy = (curr_usage, task_type, node_index) => {
   return (1 - curr_usage.cpu) > BE_services[task_type][node_index].cpu
     && (1 - curr_usage.mem) > BE_services[task_type][node_index].mem
 }
 
-// 处理所有到达的 BE 任务
-let BE_task_handler = (BE_cnt) => {
+// 时间衰减权重
+let SWD = (BE_cnt) => {
   // 寻找一个历史最小碎片满足部署要求的
   let target = -1
   for (let i = 0; i < nodes.length; i++) {
@@ -144,12 +110,30 @@ let BE_task_handler = (BE_cnt) => {
       }
     }
   }
+  return target
+}
+// 随机部署
+let rnd = (BE_cnt) => {
+  return Math.floor((Math.random() * nodes.length))
+}
+// 顺序部署
+let seqCnt = 0
+let seq = () => {
+  seqCnt++
+  if (seqCnt === nodes.length)
+    seqCnt = 0
+  return seqCnt
+}
+
+// 处理所有到达的 BE 任务
+let BE_task_handler = (BE_cnt) => {
+  // 选择执行节点
+  let target = SWD(BE_cnt)
 
   if (target !== -1) {
-    axios.get(nodes[target].url).then(r => {
-
-    })
+    axios.get(BE_services[BE_tasks[BE_cnt].type].url).then()
   }
+
   return target !== -1
 }
 
@@ -168,20 +152,34 @@ let BE_tick_interval = setInterval(() => {
   }
 }, BE_tick)
 
+// 整个运行过程结束
+function finish() {
+  clearInterval(source_tick_interval)
+  clearInterval(BE_tick_interval)
+  analysis()
+}
+
 // 处理所有到达的 LS 任务
 let LS_cnt = 0
 let LS_task_handler = () => {
+  let service = LS_services[LS_tasks[LS_cnt].type]
+  let arrive_time = LS_tasks[LS_cnt].arrive_time
   LS_tasks[LS_cnt].arrive_time = Date.now()
-  axios.get(nodes[LS_tasks[LS_cnt].type].url).then(r => {
-    LS_tasks[LS_cnt].response_time = Date.now()
-  })
+  if (service.type === 'redis') {
+    redis_cli[LS_tasks[LS_cnt].type / LS_type.length].get('key').then(r => {
+      LS_tasks[LS_cnt].response_time = Date.now()
+    })
+  } else {
+    axios.get(service.url).then(r => {
+      LS_tasks[LS_cnt].response_time = Date.now()
+    })
+  }
+
   LS_cnt++
   if (LS_cnt < LS_tasks.length) {
-    setTimeout(LS_task_handler, LS_tasks[LS_cnt].arrive_time)
+    setTimeout(LS_task_handler, LS_tasks[LS_cnt].arrive_time - arrive_time)
   } else {
-    clearInterval(source_tick_interval)
-    clearInterval(BE_tick_interval)
-    analysis()
+    finish()
   }
 }
 setTimeout(LS_task_handler, LS_tasks[0].arrive_time)

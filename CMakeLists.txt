@@ -6,6 +6,6 @@ set(CMAKE_CXX_STANDARD 14)
 include_directories(.)
 
 add_executable(task_deployment
-        experiment.cpp
+#        experiment.cpp
 #        test.cpp
-        )
+        realworld/taskGenerator.cpp)
