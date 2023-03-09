@@ -127,7 +127,7 @@ let init_services = () => {
 
 let nodes = [
   { // edge
-    url: "192.168.2.5",
+    url: "http://192.168.2.5",
     cur_usage: { // 当前资源使用率
       cpu: 0,
       mem: 0,
@@ -142,7 +142,7 @@ let nodes = [
     },
     history_usage: [], // 历史所有资源使用率
   }, { // edge
-    url: "192.168.2.50",
+    url: "http://192.168.2.50",
     cur_usage: { // 当前资源使用率
       cpu: 0,
       mem: 0,
@@ -157,7 +157,7 @@ let nodes = [
     },
     history_usage: [], // 历史所有资源使用率
   }, { // edge
-    url: "192.168.2.98",
+    url: "http://192.168.2.98",
     cur_usage: { // 当前资源使用率
       cpu: 0,
       mem: 0,
@@ -172,7 +172,7 @@ let nodes = [
     },
     history_usage: [], // 历史所有资源使用率
   }, { // cloud
-    url: "192.168.2.6"
+    url: "http://192.168.2.6"
   }
 ]
 
@@ -188,13 +188,15 @@ function do_deploy(candi, remain) {
 
 function remote_deploy(service, services_statistics, target) {
   service.url = nodes[target].url + ":" + nodes[target].port_cnt + services_statistics[service.type].url
-  console.log(nodes[target].url + ":3000/deploy/", {port: nodes[target].port_cnt, type: service.type})
-  axios.post(nodes[target].url + ":3000/deploy/", {port: nodes[target].port_cnt, type: service.type}).then(r => {
+  console.log(`${nodes[target].url}:3000/deploy/${service.type}/${nodes[target].port_cnt}`)
+  axios.get(`${nodes[target].url}:3000/deploy/${service.type}/${nodes[target].port_cnt}`).then(r => {
     if (service.type === 'redis') {
       let cli = new Redis(service.port, nodes[target].url)
       cli.set('key', 'val')
       redis_cli.push(cli)
     }
+  }).catch(e => {
+    console.error('remove deploy ERR!', e.message)
   })
 
   nodes[target].port_cnt++
@@ -204,7 +206,7 @@ let prev_deployment = (deploy_BE) => {
   nodes.forEach(n => {
     n.remain_source = {cpu: 1, mem: 1}
     n.deploy_num = 0
-    n.port_cnt = 6789
+    n.port_cnt = 6666
   })
   if (deploy_BE) {
     BE_services.forEach(s => {
@@ -223,7 +225,6 @@ let prev_deployment = (deploy_BE) => {
 
       do_deploy(BE_services_statistics[s.type].usage[target], nodes[target].remain_source)
       nodes[target].deploy_num++
-      remote_deploy(s, BE_services_statistics, target)
     })
     console.log('BE_services ', BE_services)
   }

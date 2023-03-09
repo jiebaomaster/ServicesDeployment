@@ -5,7 +5,6 @@ let app = express();
 app.get('/http/',  (req, res) => {
   console.log(Date.now(), 'got http access!')
   for (let i = 0; i < 100000; i++);
-
   res.send();
 })
 
