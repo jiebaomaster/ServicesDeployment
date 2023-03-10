@@ -61,10 +61,13 @@ app.get('/tick/',  (req, res) => {
 // 执行 BE 任务
 // todo BE 任务需要预先编译，需要调整运行类别
 app.get('/run/:percent', (req, res) => {
-  for (let i = 0; i < os.cpus().length; i++) {
-    let total = Math.floor(Math.random()*10+1)
-    shell.exec(`/home/jbmaster/Desktop/ServicesDeployment/realworld/be ${req.params.percent} ${total}`, {async:true});
-    // shell.exec(`nice -n -19 /home/jbmaster/Desktop/ServicesDeployment/realworld/be ${req.params.percent} ${total}`, {async:true});
+  let num = parseInt(req.params.percent) / 10
+  for (let j = 0; j < num; j++) {
+    let total = Math.floor(Math.random()*5 + 1)
+    for (let i = 0; i < os.cpus().length; i++) {
+      // shell.exec(`/home/jbmaster/Desktop/ServicesDeployment/realworld/be 10 ${total}`, {async:true});
+      shell.exec(`nice -n 19 /home/jbmaster/Desktop/ServicesDeployment/realworld/be 10 ${total}`, {async:true});
+    }
   }
   res.send()
 })
@@ -79,7 +82,7 @@ app.get('/deploy/:type/:port', (req, res) => {
       })
       break
     case "http":
-      s = shell.exec("node http_worker.js " + req.params.port, (code, stdout, stderr) => {
+      s = shell.exec(`nohup node http_worker.js ${req.params.port} &`, (code, stdout, stderr) => {
         console.log('http, Exit code:', code);
       })
       break

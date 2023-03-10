@@ -12,22 +12,24 @@
 using namespace std;
 
 void generate_tasks(vector<pair<int, int>> &tasks, int task_nums, int task_category,
-                    double exponential_distribution_lambda, double normal_distribution_mean,
-                    double normal_distribution_stddev) {
-  mt19937 egen(1701);
+//                    double normal_distribution_mean,
+//                    double normal_distribution_stddev,
+                    double exponential_distribution_lambda) {
+  mt19937 egen(1996);
   exponential_distribution<> ed(exponential_distribution_lambda);
 
-  mt19937 ngen{1996};
-  normal_distribution<> nd{normal_distribution_mean, normal_distribution_stddev};
-
+  mt19937 ngen{6991};
+//  normal_distribution<> nd{normal_distribution_mean, normal_distribution_stddev};
+  uniform_int_distribution<> ud(0, task_category-1);
   int cur = 0;
   // 生成 TASK_NUMS 个按指数分布到达的随机任务，任务的种类服从随机分布
   for (int i = 0; i < task_nums; i++) {
     // 任务种类
-    int t = -1;
-    while (t < 0 || t >= task_category) {
-      t = round(nd(ngen));
-    }
+//    int t = -1;
+//    while (t < 0 || t >= task_category) {
+//      t = round(nd(ngen));
+//    }
+    int t = ud(ngen);
     // 到达时间
     cur += ed(egen) * 100;
 
@@ -37,7 +39,7 @@ void generate_tasks(vector<pair<int, int>> &tasks, int task_nums, int task_categ
 
 int main() {
   vector<pair<int, int>> LS_tasks;
-  generate_tasks(LS_tasks, 10000, 30, 10, 30 / 2, 10);
+  generate_tasks(LS_tasks, 10000, 16, 3);
   // [{type, arrive_time}]
   // 以写模式打开文件
   ofstream outfile;
@@ -49,7 +51,7 @@ int main() {
   outfile << "]" << endl;
 
   vector<pair<int, int>> BE_tasks;
-  generate_tasks(BE_tasks, 500, 10, 0.5, 6 / 2, 2);
+  generate_tasks(BE_tasks, 150, 6, 0.05);
   // [{type, arrive_time}]
   outfile << "let BE_tasks = [" << endl;
   for (auto t: BE_tasks) {

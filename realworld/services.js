@@ -1,10 +1,12 @@
 const axios = require('axios')
 const Redis = require("ioredis")
 
-let BE_type = [1, 3, 5] // cpu 0.1~0.5
+// 标记 BE 任务是否独立部署
+const deploy_BE = false
+let BE_type = [1, 2, 3, 4, 1, 2] // cpu 0.1~0.5
 let BE_services_statistics = {
   1: { // 1
-    url: '/be/10',
+    url: '/run/10',
     usage: [{
       cpu: 0.1,
       mem: 0.1,
@@ -16,21 +18,21 @@ let BE_services_statistics = {
       mem: 0.1,
     }]
   },
-  // 2: { // 2
-  //   url: '/run2/',
-  //   usage: [{
-  //     cpu: 0.2,
-  //     mem: 0.1,
-  //   }, {
-  //     cpu: 0.2,
-  //     mem: 0.1,
-  //   }, {
-  //     cpu: 0.2,
-  //     mem: 0.1,
-  //   }]
-  // },
+  2: { // 2
+    url: '/run/20',
+    usage: [{
+      cpu: 0.2,
+      mem: 0.1,
+    }, {
+      cpu: 0.2,
+      mem: 0.1,
+    }, {
+      cpu: 0.2,
+      mem: 0.1,
+    }]
+  },
   3: { // 3
-    url: '/be/30',
+    url: '/run/30',
     usage: [{
       cpu: 0.3,
       mem: 0.1,
@@ -42,21 +44,21 @@ let BE_services_statistics = {
       mem: 0.1,
     }]
   },
-  // 4: { // 4
-  //   url: '/run4/',
-  //   usage: [{
-  //     cpu: 0.4,
-  //     mem: 0.1,
-  //   }, {
-  //     cpu: 0.4,
-  //     mem: 0.1,
-  //   }, {
-  //     cpu: 0.4,
-  //     mem: 0.1,
-  //   }]
-  // },
+  4: { // 4
+    url: '/run/40',
+    usage: [{
+      cpu: 0.4,
+      mem: 0.1,
+    }, {
+      cpu: 0.4,
+      mem: 0.1,
+    }, {
+      cpu: 0.4,
+      mem: 0.1,
+    }]
+  },
   5: { // 5
-    url: '/be/50',
+    url: '/run/50',
     usage: [{
       cpu: 0.5,
       mem: 0.1,
@@ -71,52 +73,52 @@ let BE_services_statistics = {
 }
 let BE_services = []
 
-let LS_type = ['redis', 'http', 'yolov5']
+let LS_type = ['redis', 'http', 'http', 'redis', 'http', 'yolov5', 'redis', 'http', 'yolov5', 'redis', 'http', 'http', 'http', 'yolov5', 'http', 'http']
 let LS_services_statistics = {
   redis: {
-    url: 'redis',
-    usage: [{ // i5-6500-4core 16g
-      cpu: 0.3,
+    url: '/redis/',
+    usage: [{
+      cpu: 0.25,
       mem: 0.1,
-    }, { // i7-7700-8core 16g
+    }, {
       cpu: 0.2,
-      mem: 0.2,
-    }, { // i5-10400-12core 16g
+      mem: 0.1,
+    }, {
       cpu: 0.2,
-      mem: 0.2,
+      mem: 0.1,
     }]
   },
   http: { // http-server
     url: '/http/',
     usage: [{
-      cpu: 0.3,
-      mem: 0.2,
+      cpu: 0.1,
+      mem: 0.1,
     }, {
-      cpu: 0.2,
-      mem: 0.2,
+      cpu: 0.1,
+      mem: 0.1,
     }, {
-      cpu: 0.2,
-      mem: 0.2,
+      cpu: 0.1,
+      mem: 0.1,
     }]
   },
   yolov5: { // yolov5
-    url: '/low/',
+    url: '/low/1',
     usage: [{
-      cpu: 0.3,
-      mem: 0.1,
+      cpu: 0.35,
+      mem: 0.2,
     }, {
-      cpu: 0.2,
-      mem: 0.1,
+      cpu: 0.35,
+      mem: 0.2,
     }, {
-      cpu: 0.2,
-      mem: 0.1,
+      cpu: 0.35,
+      mem: 0.2,
     }]
   },
 }
 let LS_services = []
-let redis_cli = []
-const BE_service_num = BE_type.length * 2
-const LS_service_num = LS_type.length * 5
+let redis_cli = {}
+const BE_service_num = BE_type.length
+const LS_service_num = LS_type.length
 let init_services = () => {
   for (let i = 0; i < BE_service_num; i++)
     BE_services.push({type: BE_type[i % BE_type.length]})
@@ -127,7 +129,7 @@ let init_services = () => {
 
 let nodes = [
   { // edge
-    url: "http://192.168.2.5",
+    url: "192.168.2.5",
     cur_usage: { // 当前资源使用率
       cpu: 0,
       mem: 0,
@@ -142,7 +144,7 @@ let nodes = [
     },
     history_usage: [], // 历史所有资源使用率
   }, { // edge
-    url: "http://192.168.2.50",
+    url: "192.168.2.50",
     cur_usage: { // 当前资源使用率
       cpu: 0,
       mem: 0,
@@ -157,7 +159,7 @@ let nodes = [
     },
     history_usage: [], // 历史所有资源使用率
   }, { // edge
-    url: "http://192.168.2.98",
+    url: "192.168.2.98",
     cur_usage: { // 当前资源使用率
       cpu: 0,
       mem: 0,
@@ -172,7 +174,20 @@ let nodes = [
     },
     history_usage: [], // 历史所有资源使用率
   }, { // cloud
-    url: "http://192.168.2.6"
+    url: "192.168.2.6",
+    cur_usage: { // 当前资源使用率
+      cpu: 0,
+      mem: 0,
+    },
+    avg_usage: { // 历史衰减资源使用率
+      cpu: 0,
+      mem: 0,
+    },
+    max_usage: { // 历史资源使用率峰值
+      cpu: 0,
+      mem: 0,
+    },
+    history_usage: [], // 历史所有资源使用率
   }
 ]
 
@@ -187,16 +202,19 @@ function do_deploy(candi, remain) {
 }
 
 function remote_deploy(service, services_statistics, target) {
-  service.url = nodes[target].url + ":" + nodes[target].port_cnt + services_statistics[service.type].url
-  console.log(`${nodes[target].url}:3000/deploy/${service.type}/${nodes[target].port_cnt}`)
-  axios.get(`${nodes[target].url}:3000/deploy/${service.type}/${nodes[target].port_cnt}`).then(r => {
+  let port = nodes[target].port_cnt
+  service.url = nodes[target].url + ":" + port + services_statistics[service.type].url
+  axios.get(`http://${nodes[target].url}:3000/deploy/${service.type}/${port}`).then(r => {
+    console.log("remote deploy succ!", service.url)
     if (service.type === 'redis') {
-      let cli = new Redis(service.port, nodes[target].url)
-      cli.set('key', 'val')
-      redis_cli.push(cli)
+      setTimeout(() => {
+        let cli = new Redis(port, nodes[target].url)
+        cli.set('key', 'val')
+        redis_cli[service.url] = cli
+      }, 10000)
     }
   }).catch(e => {
-    console.error('remove deploy ERR!', e.message)
+    console.error('remote deploy ERR!', e.message, service.url)
   })
 
   nodes[target].port_cnt++
@@ -225,7 +243,9 @@ let prev_deployment = (deploy_BE) => {
 
       do_deploy(BE_services_statistics[s.type].usage[target], nodes[target].remain_source)
       nodes[target].deploy_num++
+      s.url = nodes[target].url + ":3000"+ BE_services_statistics[s.type].url
     })
+
     console.log('BE_services ', BE_services)
   }
 
@@ -252,14 +272,17 @@ let prev_deployment = (deploy_BE) => {
 // 执行准备工作
 (function prepare() {
   init_services()
-  prev_deployment(true)
+  prev_deployment(deploy_BE)
 })()
 
 module.exports = {
   nodes,
-  redis_cli,
+  deploy_BE,
   BE_type,
   BE_services,
+  BE_services_statistics,
   LS_type,
   LS_services,
+  LS_services_statistics,
+  redis_cli,
 }
